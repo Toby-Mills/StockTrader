@@ -33,8 +33,8 @@ export class AppComponent {
 
   navItems = [
     { label: 'Portfolio',     icon: 'show_chart',      route: '/portfolio' },
-    { label: 'Accounts',      icon: 'account_balance', route: '/accounts' },
-    { label: 'Dividends',     icon: 'payments',        route: '/dividends' },
+    { label: 'Accounts',      icon: 'account_balance_wallet', route: '/accounts' },
+    { label: 'Dividends',     icon: 'paid',            route: '/dividends' },
     { label: 'Analytics',     icon: 'analytics',       route: '/analytics' },
   ];
 

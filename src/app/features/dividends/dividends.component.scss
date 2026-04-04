@@ -7,6 +7,12 @@ mat-card-content {
   gap: 1rem;
 }
 
+.section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .toolbar-row {
   display: grid;
   grid-template-columns: minmax(220px, 320px) minmax(220px, 320px) auto;

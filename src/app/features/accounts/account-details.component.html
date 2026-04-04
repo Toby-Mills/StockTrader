@@ -6,7 +6,10 @@
           <mat-icon>arrow_back</mat-icon>
         </button>
         <div class="account-info">
-          <h1>{{ acc.name }}</h1>
+          <h1>
+            <mat-icon class="account-title-icon">account_balance_wallet</mat-icon>
+            <span>{{ acc.name }}</span>
+          </h1>
           <p class="account-meta">{{ acc.currency }} • {{ acc.platform || acc.broker || 'Not set' }}</p>
         </div>
         <div class="header-actions">
@@ -51,7 +54,13 @@
         </div>
 
         <mat-tab-group>
-          <mat-tab label="Transactions">
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span class="tab-label">
+                <mat-icon>swap_horiz</mat-icon>
+                <span>Transactions</span>
+              </span>
+            </ng-template>
             <div class="tab-content">
               <button
                 mat-raised-button
@@ -61,7 +70,7 @@
                 [disabled]="isSaving"
                 class="add-button"
               >
-                <mat-icon>add</mat-icon>
+                <mat-icon>swap_horiz</mat-icon>
                 Add Transaction
               </button>
 
@@ -117,7 +126,13 @@
             </div>
           </mat-tab>
 
-          <mat-tab label="Dividends">
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span class="tab-label">
+                <mat-icon>paid</mat-icon>
+                <span>Dividends</span>
+              </span>
+            </ng-template>
             <div class="tab-content">
               <button
                 mat-raised-button
@@ -127,7 +142,7 @@
                 [disabled]="isSaving"
                 class="add-button"
               >
-                <mat-icon>add</mat-icon>
+                <mat-icon>paid</mat-icon>
                 Add Dividend
               </button>
 
@@ -173,7 +188,13 @@
             </div>
           </mat-tab>
 
-          <mat-tab label="Cash">
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span class="tab-label">
+                <mat-icon>attach_money</mat-icon>
+                <span>Cash</span>
+              </span>
+            </ng-template>
             <div class="tab-content">
               <button
                 mat-raised-button
@@ -183,7 +204,7 @@
                 [disabled]="isSaving"
                 class="add-button"
               >
-                <mat-icon>add</mat-icon>
+                <mat-icon>attach_money</mat-icon>
                 Add Cash Entry
               </button>
 

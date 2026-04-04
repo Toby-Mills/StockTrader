@@ -1,6 +1,9 @@
 <mat-card>
   <mat-card-header>
-    <mat-card-title>Transactions</mat-card-title>
+    <mat-card-title class="section-title">
+      <mat-icon>swap_horiz</mat-icon>
+      <span>Transactions</span>
+    </mat-card-title>
   </mat-card-header>
   <mat-card-content>
     @if (!hasAccounts()) {
@@ -40,7 +43,7 @@
           (click)="openAddDialog()"
           [disabled]="isSaving"
         >
-          <mat-icon>add</mat-icon>
+          <mat-icon>swap_horiz</mat-icon>
           Add Transaction
         </button>
       </section>

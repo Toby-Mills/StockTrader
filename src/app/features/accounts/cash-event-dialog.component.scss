@@ -2,6 +2,12 @@
   display: block;
 }
 
+.dialog-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .cash-form {
   width: min(460px, 100%);
   display: grid;

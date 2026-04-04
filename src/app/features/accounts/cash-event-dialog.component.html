@@ -1,4 +1,7 @@
-<h2 mat-dialog-title>{{ isEditMode ? 'Edit Cash Entry' : 'Add Cash Entry' }}</h2>
+<h2 mat-dialog-title class="dialog-title">
+  <mat-icon>attach_money</mat-icon>
+  <span>{{ isEditMode ? 'Edit Cash Entry' : 'Add Cash Entry' }}</span>
+</h2>
 
 <mat-dialog-content>
   <form [formGroup]="form" class="cash-form">
