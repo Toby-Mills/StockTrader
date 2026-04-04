@@ -1,5 +1,16 @@
 <mat-toolbar color="primary">
-  <span>{{ title }}</span>
+  <a class="brand" [routerLink]="isAuthenticated() ? '/portfolio' : '/sign-in'" aria-label="StockTrader home">
+    <span class="brand-mark" aria-hidden="true">
+      <span class="bar bar-1"></span>
+      <span class="bar bar-2"></span>
+      <span class="bar bar-3"></span>
+      <span class="trend"></span>
+    </span>
+    <span class="brand-text">
+      <span class="brand-title">{{ title }}</span>
+      <span class="brand-tagline">Portfolio Tracker</span>
+    </span>
+  </a>
   <span class="toolbar-spacer"></span>
   @if (isAuthenticated()) {
     <span class="user-email">{{ user()?.email }}</span>
