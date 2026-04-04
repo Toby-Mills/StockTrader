@@ -1,11 +1,6 @@
 <mat-toolbar color="primary">
   <a class="brand" [routerLink]="isAuthenticated() ? '/portfolio' : '/sign-in'" aria-label="StockTrader home">
-    <span class="brand-mark" aria-hidden="true">
-      <span class="bar bar-1"></span>
-      <span class="bar bar-2"></span>
-      <span class="bar bar-3"></span>
-      <span class="trend"></span>
-    </span>
+    <img class="brand-mark" src="/assets/StockTraderIcon.png" alt="StockTrader icon" aria-hidden="true">
     <span class="brand-text">
       <span class="brand-title">{{ title }}</span>
       <span class="brand-tagline">Portfolio Tracker</span>

@@ -19,6 +19,7 @@ export interface AccountDialogResult {
 }
 
 @Component({
+    standalone: true,
     selector: 'app-account-dialog',
     imports: [
         ReactiveFormsModule,

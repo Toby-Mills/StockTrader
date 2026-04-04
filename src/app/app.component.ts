@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from './core/services/auth.service';
 
 @Component({
+    standalone: true,
     selector: 'app-root',
     imports: [
         RouterOutlet,

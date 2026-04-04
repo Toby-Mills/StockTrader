@@ -5,6 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
+    standalone: true,
     selector: 'app-sign-in',
     imports: [MatCardModule, MatButtonModule],
     templateUrl: './sign-in.component.html',

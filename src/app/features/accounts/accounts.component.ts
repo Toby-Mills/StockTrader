@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 import { AccountDialogComponent, AccountDialogResult } from './account-dialog.component';
 
 @Component({
+    standalone: true,
     selector: 'app-accounts',
     imports: [MatCardModule, MatButtonModule, MatIconModule, MatDialogModule],
     templateUrl: './accounts.component.html',

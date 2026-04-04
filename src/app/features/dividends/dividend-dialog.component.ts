@@ -34,6 +34,7 @@ export interface DividendDialogResult {
 }
 
 @Component({
+    standalone: true,
     selector: 'app-dividend-dialog',
     imports: [
         ReactiveFormsModule,

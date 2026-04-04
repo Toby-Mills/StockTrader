@@ -22,6 +22,7 @@ export interface CashEventDialogResult {
 }
 
 @Component({
+    standalone: true,
     selector: 'app-cash-event-dialog',
     imports: [
         ReactiveFormsModule,

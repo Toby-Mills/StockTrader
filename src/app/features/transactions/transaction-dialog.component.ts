@@ -30,6 +30,7 @@ export interface TransactionDialogResult {
 }
 
 @Component({
+    standalone: true,
     selector: 'app-transaction-dialog',
     imports: [
         ReactiveFormsModule,

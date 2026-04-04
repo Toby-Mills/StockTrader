@@ -18,6 +18,7 @@ import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
 import { DividendDialogComponent, DividendDialogResult } from './dividend-dialog.component';
 
 @Component({
+    standalone: true,
     selector: 'app-dividends',
     imports: [
         MatCardModule,

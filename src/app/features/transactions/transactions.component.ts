@@ -16,6 +16,7 @@ import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
 import { TransactionDialogComponent, TransactionDialogResult } from './transaction-dialog.component';
 
 @Component({
+    standalone: true,
     selector: 'app-transactions',
     imports: [
         MatCardModule,

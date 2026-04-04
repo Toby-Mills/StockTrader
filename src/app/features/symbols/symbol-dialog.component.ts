@@ -17,6 +17,7 @@ export interface SymbolDialogResult {
 }
 
 @Component({
+    standalone: true,
     selector: 'app-symbol-dialog',
     imports: [
         ReactiveFormsModule,
