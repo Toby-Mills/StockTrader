@@ -36,9 +36,7 @@ testem.log
 .DS_Store
 Thumbs.db
 
-# Environment files with secrets — use environment.template.ts instead
-src/environments/environment.ts
-src/environments/environment.prod.ts
+# Environment template remains as setup documentation
 
 # Firestore rules contain UID allowlist — manage in Firebase console directly
 firestore.rules

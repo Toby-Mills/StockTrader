@@ -16,18 +16,17 @@ import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
 import { TransactionDialogComponent, TransactionDialogResult } from './transaction-dialog.component';
 
 @Component({
-  selector: 'app-transactions',
-  standalone: true,
-  imports: [
-    MatCardModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatIconModule,
-    MatDialogModule,
-  ],
-  templateUrl: './transactions.component.html',
-  styleUrl: './transactions.component.scss',
+    selector: 'app-transactions',
+    imports: [
+        MatCardModule,
+        MatButtonModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatIconModule,
+        MatDialogModule,
+    ],
+    templateUrl: './transactions.component.html',
+    styleUrl: './transactions.component.scss'
 })
 export class TransactionsComponent {
   private readonly accountService = inject(AccountService);

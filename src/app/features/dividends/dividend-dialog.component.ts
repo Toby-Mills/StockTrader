@@ -34,19 +34,18 @@ export interface DividendDialogResult {
 }
 
 @Component({
-  selector: 'app-dividend-dialog',
-  standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    MatAutocompleteModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-  ],
-  templateUrl: './dividend-dialog.component.html',
-  styleUrl: './dividend-dialog.component.scss',
+    selector: 'app-dividend-dialog',
+    imports: [
+        ReactiveFormsModule,
+        MatAutocompleteModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatButtonModule,
+    ],
+    templateUrl: './dividend-dialog.component.html',
+    styleUrl: './dividend-dialog.component.scss'
 })
 export class DividendDialogComponent {
   private static readonly CREATE_SYMBOL_OPTION = '__CREATE_NEW_SYMBOL__';

@@ -19,18 +19,17 @@ export interface AccountDialogResult {
 }
 
 @Component({
-  selector: 'app-account-dialog',
-  standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-  ],
-  templateUrl: './account-dialog.component.html',
-  styleUrl: './account-dialog.component.scss',
+    selector: 'app-account-dialog',
+    imports: [
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatButtonModule,
+    ],
+    templateUrl: './account-dialog.component.html',
+    styleUrl: './account-dialog.component.scss'
 })
 export class AccountDialogComponent {
   private readonly dialogData: AccountDialogData;

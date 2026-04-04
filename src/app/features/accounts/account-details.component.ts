@@ -40,20 +40,19 @@ interface CashLedgerRow {
 }
 
 @Component({
-  selector: 'app-account-details',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatCardModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatIconModule,
-    MatDialogModule,
-    MatTabsModule,
-  ],
-  templateUrl: './account-details.component.html',
-  styleUrl: './account-details.component.scss',
+    selector: 'app-account-details',
+    imports: [
+        CommonModule,
+        MatCardModule,
+        MatButtonModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatIconModule,
+        MatDialogModule,
+        MatTabsModule,
+    ],
+    templateUrl: './account-details.component.html',
+    styleUrl: './account-details.component.scss'
 })
 export class AccountDetailsComponent {
   private readonly route = inject(ActivatedRoute);

@@ -22,19 +22,18 @@ export interface CashEventDialogResult {
 }
 
 @Component({
-  selector: 'app-cash-event-dialog',
-  standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-  ],
-  templateUrl: './cash-event-dialog.component.html',
-  styleUrl: './cash-event-dialog.component.scss',
+    selector: 'app-cash-event-dialog',
+    imports: [
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatIconModule,
+        MatInputModule,
+        MatSelectModule,
+        MatButtonModule,
+    ],
+    templateUrl: './cash-event-dialog.component.html',
+    styleUrl: './cash-event-dialog.component.scss'
 })
 export class CashEventDialogComponent {
   private readonly dialogData: CashEventDialogData;

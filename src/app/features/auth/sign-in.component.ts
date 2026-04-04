@@ -5,11 +5,10 @@ import { MatCardModule } from '@angular/material/card';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
-  selector: 'app-sign-in',
-  standalone: true,
-  imports: [MatCardModule, MatButtonModule],
-  templateUrl: './sign-in.component.html',
-  styleUrl: './sign-in.component.scss',
+    selector: 'app-sign-in',
+    imports: [MatCardModule, MatButtonModule],
+    templateUrl: './sign-in.component.html',
+    styleUrl: './sign-in.component.scss'
 })
 export class SignInComponent {
   private readonly authService = inject(AuthService);

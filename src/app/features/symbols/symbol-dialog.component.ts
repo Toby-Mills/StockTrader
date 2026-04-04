@@ -17,17 +17,16 @@ export interface SymbolDialogResult {
 }
 
 @Component({
-  selector: 'app-symbol-dialog',
-  standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-  ],
-  templateUrl: './symbol-dialog.component.html',
-  styleUrl: './symbol-dialog.component.scss',
+    selector: 'app-symbol-dialog',
+    imports: [
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+    ],
+    templateUrl: './symbol-dialog.component.html',
+    styleUrl: './symbol-dialog.component.scss'
 })
 export class SymbolDialogComponent {
   private readonly dialogData: SymbolDialogData;

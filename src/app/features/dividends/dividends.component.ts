@@ -18,18 +18,17 @@ import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
 import { DividendDialogComponent, DividendDialogResult } from './dividend-dialog.component';
 
 @Component({
-  selector: 'app-dividends',
-  standalone: true,
-  imports: [
-    MatCardModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatIconModule,
-    MatDialogModule,
-  ],
-  templateUrl: './dividends.component.html',
-  styleUrl: './dividends.component.scss',
+    selector: 'app-dividends',
+    imports: [
+        MatCardModule,
+        MatButtonModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatIconModule,
+        MatDialogModule,
+    ],
+    templateUrl: './dividends.component.html',
+    styleUrl: './dividends.component.scss'
 })
 export class DividendsComponent {
   private readonly accountService = inject(AccountService);

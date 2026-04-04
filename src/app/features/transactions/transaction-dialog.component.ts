@@ -30,18 +30,17 @@ export interface TransactionDialogResult {
 }
 
 @Component({
-  selector: 'app-transaction-dialog',
-  standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-  ],
-  templateUrl: './transaction-dialog.component.html',
-  styleUrl: './transaction-dialog.component.scss',
+    selector: 'app-transaction-dialog',
+    imports: [
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatButtonModule,
+    ],
+    templateUrl: './transaction-dialog.component.html',
+    styleUrl: './transaction-dialog.component.scss'
 })
 export class TransactionDialogComponent {
   private static readonly CREATE_SYMBOL_OPTION = '__CREATE_NEW_SYMBOL__';

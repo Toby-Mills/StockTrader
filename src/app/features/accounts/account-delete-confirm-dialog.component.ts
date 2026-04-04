@@ -9,11 +9,10 @@ interface AccountDeleteConfirmDialogData {
 }
 
 @Component({
-  selector: 'app-account-delete-confirm-dialog',
-  standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule],
-  templateUrl: './account-delete-confirm-dialog.component.html',
-  styleUrl: './account-delete-confirm-dialog.component.scss',
+    selector: 'app-account-delete-confirm-dialog',
+    imports: [MatDialogModule, MatButtonModule, MatIconModule],
+    templateUrl: './account-delete-confirm-dialog.component.html',
+    styleUrl: './account-delete-confirm-dialog.component.scss'
 })
 export class AccountDeleteConfirmDialogComponent {
   readonly accountName: string;
