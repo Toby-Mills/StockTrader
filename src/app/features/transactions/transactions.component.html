@@ -1,0 +1,100 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>Transactions</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    @if (!hasAccounts()) {
+      <p class="empty-state">
+        You do not have any accounts yet. Create an account first, then add transactions.
+      </p>
+    } @else {
+      <section class="toolbar-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Account</mat-label>
+          <mat-select
+            [value]="selectedAccountId()"
+            (valueChange)="onAccountChanged($event)"
+          >
+            @for (account of accounts(); track account.id) {
+              <mat-option [value]="account.id">
+                {{ account.name }} ({{ account.currency }})
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Filter by Stock/Fund</mat-label>
+          <mat-select [value]="selectedSymbol()" (valueChange)="onSymbolChanged($event)">
+            <mat-option value="ALL">All symbols</mat-option>
+            @for (symbol of symbols(); track symbol) {
+              <mat-option [value]="symbol">{{ symbol }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          (click)="openAddDialog()"
+          [disabled]="isSaving"
+        >
+          <mat-icon>add</mat-icon>
+          Add Transaction
+        </button>
+      </section>
+
+      @if (feedbackMessage) {
+        <p class="feedback">{{ feedbackMessage }}</p>
+      }
+
+      @if (filteredTransactions().length === 0) {
+        <p class="empty-state">
+          No transactions found for the selected filter.
+        </p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tx-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Symbol</th>
+                <th>Type</th>
+                <th>Shares</th>
+                <th>Price</th>
+                <th>Total Price</th>
+                <th>Fees</th>
+                <th>Total Cost</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (tx of filteredTransactions(); track tx.id) {
+                <tr>
+                  <td>{{ formatDate(tx.date) }}</td>
+                  <td>{{ tx.symbol }}</td>
+                  <td>
+                    <span class="tx-type" [class.sell]="tx.type === 'sell'">
+                      {{ transactionLabel(tx.type) }}
+                    </span>
+                  </td>
+                  <td>{{ tx.quantity }}</td>
+                  <td>{{ formatMoney(tx.price, tx.currency) }}</td>
+                  <td>{{ formatMoney(totalPrice(tx), tx.currency) }}</td>
+                  <td>{{ formatMoney(tx.fees ?? 0, tx.currency) }}</td>
+                  <td>{{ formatMoney(totalCost(tx), tx.currency) }}</td>
+                  <td class="actions-cell">
+                    <button mat-button type="button" (click)="openEditDialog(tx)" [disabled]="isSaving">
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </mat-card-content>
+</mat-card>

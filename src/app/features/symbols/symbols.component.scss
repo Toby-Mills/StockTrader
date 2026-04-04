@@ -1,0 +1,40 @@
+.toolbar-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.account-field {
+  min-width: 20rem;
+}
+
+.symbols-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+}
+
+.symbol-card {
+  height: 100%;
+}
+
+.feedback {
+  margin: 0.75rem 0;
+  color: #1b5e20;
+}
+
+.empty-state {
+  opacity: 0.85;
+}
+
+@media (max-width: 720px) {
+  .toolbar-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .account-field {
+    min-width: auto;
+  }
+}

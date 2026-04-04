@@ -1,0 +1,23 @@
+<h2 mat-dialog-title>{{ isEditMode ? 'Edit Dividend Type' : 'Add Dividend Type' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="type-form">
+    <mat-form-field appearance="outline">
+      <mat-label>Type Name</mat-label>
+      <input matInput formControlName="name" maxlength="80" placeholder="Cash Dividend" />
+      <mat-error>Type name is required.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Description (optional)</mat-label>
+      <input matInput formControlName="description" maxlength="200" placeholder="Quarterly payout" />
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close type="button">Cancel</button>
+  <button mat-raised-button color="primary" type="button" (click)="submit()">
+    {{ isEditMode ? 'Save Changes' : 'Add Type' }}
+  </button>
+</mat-dialog-actions>

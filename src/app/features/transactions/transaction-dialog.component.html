@@ -1,0 +1,68 @@
+<h2 mat-dialog-title>{{ isEditMode ? 'Edit Transaction' : 'Add Transaction' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="tx-form">
+    <mat-form-field appearance="outline">
+      <mat-label>Stock / Fund Symbol</mat-label>
+      <mat-select formControlName="symbol" (selectionChange)="onSymbolSelectionChanged($event.value)">
+        <mat-option value="__CREATE_NEW_SYMBOL__">+ Create new symbol...</mat-option>
+        @for (symbol of symbols; track symbol.id) {
+          <mat-option [value]="symbol.symbol">
+            {{ symbol.symbol }} - {{ symbol.fullName }}
+          </mat-option>
+        }
+      </mat-select>
+      @if (symbols.length === 0) {
+        <mat-hint>No symbols yet. Choose "Create new symbol...".</mat-hint>
+      } @else if (symbolMessage) {
+        <mat-hint>{{ symbolMessage }}</mat-hint>
+      }
+      <mat-error>Symbol is required.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Transaction Type</mat-label>
+      <mat-select formControlName="type">
+        <mat-option value="buy">Purchase</mat-option>
+        <mat-option value="sell">Sale</mat-option>
+      </mat-select>
+      <mat-error>Type is required.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Date</mat-label>
+      <input matInput type="date" formControlName="date" />
+      <mat-error>Date is required.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Number of Shares</mat-label>
+      <input matInput type="number" min="0" step="0.000001" formControlName="quantity" />
+      <mat-error>Quantity must be greater than zero.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Price Per Share ({{ accountCurrency }})</mat-label>
+      <input matInput type="number" min="0" step="0.0001" formControlName="price" />
+      <mat-error>Price must be zero or more.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Total Fees ({{ accountCurrency }})</mat-label>
+      <input matInput type="number" min="0" step="0.01" formControlName="fees" />
+      <mat-error>Fees must be zero or more.</mat-error>
+    </mat-form-field>
+
+    <div class="totals">
+      <p><strong>Total Price:</strong> {{ totalPrice.toFixed(2) }} {{ accountCurrency }}</p>
+      <p><strong>Overall Total Cost:</strong> {{ totalCost.toFixed(2) }} {{ accountCurrency }}</p>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close type="button">Cancel</button>
+  <button mat-raised-button color="primary" type="button" (click)="submit()" [disabled]="isCreatingSymbol">
+    {{ isEditMode ? 'Save Changes' : 'Create Transaction' }}
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "stocktrader-c47b0"
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

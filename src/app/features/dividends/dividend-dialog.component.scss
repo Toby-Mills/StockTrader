@@ -1,0 +1,6 @@
+.div-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  min-width: min(32rem, 100%);
+}

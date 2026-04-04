@@ -1,0 +1,239 @@
+<div class="account-details-container">
+  @if (account(); as acc) {
+    <div class="account-header">
+      <div class="header-content">
+        <button mat-icon-button (click)="goBack()" class="back-button">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="account-info">
+          <h1>{{ acc.name }}</h1>
+          <p class="account-meta">{{ acc.currency }} • {{ acc.platform || acc.broker || 'Not set' }}</p>
+        </div>
+        <div class="header-actions">
+          <button
+            mat-stroked-button
+            color="warn"
+            type="button"
+            (click)="openDeleteAccountDialog()"
+            [disabled]="isSaving"
+          >
+            <mat-icon>delete_forever</mat-icon>
+            Delete Account
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <mat-card>
+      <mat-card-content>
+        @if (feedbackMessage) {
+          <p class="feedback">{{ feedbackMessage }}</p>
+        }
+
+        <div class="toolbar-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Filter by Stock/Fund</mat-label>
+            <mat-select [value]="selectedSymbol()" (valueChange)="onSymbolChanged($event)">
+              <mat-option value="ALL">All symbols</mat-option>
+              @for (symbol of symbols(); track symbol) {
+                <mat-option [value]="symbol">{{ symbolLabel(symbol) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <div class="cash-summary" [class.negative]="isCashNegative()">
+            <p class="cash-summary-label">Available Cash</p>
+            <p class="cash-summary-value">{{ formatMoney(cashBalance(), acc.currency) }}</p>
+            @if (isCashNegative()) {
+              <p class="cash-summary-warning">Margin in use (negative cash).</p>
+            }
+          </div>
+        </div>
+
+        <mat-tab-group>
+          <mat-tab label="Transactions">
+            <div class="tab-content">
+              <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                (click)="openAddTransactionDialog()"
+                [disabled]="isSaving"
+                class="add-button"
+              >
+                <mat-icon>add</mat-icon>
+                Add Transaction
+              </button>
+
+              @if (filteredTransactions().length === 0) {
+                <p class="empty-state">
+                  No transactions found for the selected filter.
+                </p>
+              } @else {
+                <div class="table-wrap">
+                  <table class="tx-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Symbol</th>
+                        <th>Type</th>
+                        <th>Shares</th>
+                        <th>Price</th>
+                        <th>Total Price</th>
+                        <th>Fees</th>
+                        <th>Total Cost</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (tx of filteredTransactions(); track tx.id) {
+                        <tr>
+                          <td>{{ formatDate(tx.date) }}</td>
+                          <td>{{ tx.symbol }}</td>
+                          <td>
+                            <span class="tx-type" [class.sell]="tx.type === 'sell'">
+                              {{ transactionLabel(tx.type) }}
+                            </span>
+                          </td>
+                          <td>{{ tx.quantity }}</td>
+                          <td>{{ formatMoney(tx.price, tx.currency) }}</td>
+                          <td>{{ formatMoney(totalPrice(tx), tx.currency) }}</td>
+                          <td>{{ formatMoney(tx.fees ?? 0, tx.currency) }}</td>
+                          <td>{{ formatMoney(totalCost(tx), tx.currency) }}</td>
+                          <td class="actions-cell">
+                            <button mat-button type="button" (click)="openEditTransactionDialog(tx)" [disabled]="isSaving">
+                              Edit
+                            </button>
+                            <button mat-button type="button" (click)="deleteTransaction(tx)" [disabled]="isSaving">
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          </mat-tab>
+
+          <mat-tab label="Dividends">
+            <div class="tab-content">
+              <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                (click)="openAddDividendDialog()"
+                [disabled]="isSaving"
+                class="add-button"
+              >
+                <mat-icon>add</mat-icon>
+                Add Dividend
+              </button>
+
+              @if (filteredDividends().length === 0) {
+                <p class="empty-state">No dividends found for the selected filter.</p>
+              } @else {
+                <div class="table-wrap">
+                  <table class="div-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Symbol</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Shares Held</th>
+                        <th>Notes</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (dividend of filteredDividends(); track dividend.id) {
+                        <tr>
+                          <td>{{ formatDate(dividend.date) }}</td>
+                          <td>{{ symbolLabel(dividend.symbol) }}</td>
+                          <td>{{ dividendTypeLabel(dividend) }}</td>
+                          <td>{{ formatMoney(dividend.amount, dividend.currency) }}</td>
+                          <td>{{ dividend.sharesHeld ?? '-' }}</td>
+                          <td>{{ dividend.notes || '-' }}</td>
+                          <td class="actions-cell">
+                            <button mat-button type="button" (click)="openEditDividendDialog(dividend)" [disabled]="isSaving">
+                              Edit
+                            </button>
+                            <button mat-button type="button" (click)="deleteDividend(dividend)" [disabled]="isSaving">
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          </mat-tab>
+
+          <mat-tab label="Cash">
+            <div class="tab-content">
+              <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                (click)="openAddCashEventDialog()"
+                [disabled]="isSaving"
+                class="add-button"
+              >
+                <mat-icon>add</mat-icon>
+                Add Cash Entry
+              </button>
+
+              @if (cashLedgerRows().length === 0) {
+                <p class="empty-state">No cash entries yet. Add a deposit to fund this account.</p>
+              } @else {
+                <div class="table-wrap">
+                  <table class="cash-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Source</th>
+                        <th>Details</th>
+                        <th>Amount</th>
+                        <th>Notes</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of cashLedgerRows(); track row.id) {
+                        <tr>
+                          <td>{{ formatDate(row.date) }}</td>
+                          <td>{{ row.sourceLabel }}</td>
+                          <td>{{ row.details }}</td>
+                          <td [class.cash-out]="row.amount < 0">
+                            {{ formatMoney(row.amount, row.currency) }}
+                          </td>
+                          <td>{{ row.notes || '-' }}</td>
+                          <td class="actions-cell">
+                            @if (row.cashEvent; as event) {
+                              <button mat-button type="button" (click)="openEditCashEventDialog(event)" [disabled]="isSaving">
+                                Edit
+                              </button>
+                              <button mat-button type="button" (click)="deleteCashEvent(event)" [disabled]="isSaving">
+                                Delete
+                              </button>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <p class="empty-state">Loading account details...</p>
+  }
+</div>

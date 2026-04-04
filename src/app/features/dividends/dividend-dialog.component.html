@@ -1,0 +1,73 @@
+<h2 mat-dialog-title>{{ isEditMode ? 'Edit Dividend' : 'Add Dividend' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="div-form">
+    <mat-form-field appearance="outline">
+      <mat-label>Stock / Fund Symbol</mat-label>
+      <mat-select formControlName="symbol" (selectionChange)="onSymbolSelectionChanged($event.value)">
+        <mat-option value="__CREATE_NEW_SYMBOL__">+ Create new symbol...</mat-option>
+        @for (symbol of symbols; track symbol.id) {
+          <mat-option [value]="symbol.symbol">
+            {{ symbol.symbol }} - {{ symbol.fullName }}
+          </mat-option>
+        }
+      </mat-select>
+      @if (symbols.length === 0) {
+        <mat-hint>No symbols yet. Choose "Create new symbol...".</mat-hint>
+      } @else if (symbolMessage) {
+        <mat-hint>{{ symbolMessage }}</mat-hint>
+      }
+      <mat-error>Symbol is required.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Dividend Type</mat-label>
+      <input
+        matInput
+        formControlName="dividendTypeName"
+        [matAutocomplete]="dividendTypeAuto"
+        placeholder="Choose or type a new type" />
+      <mat-autocomplete #dividendTypeAuto="matAutocomplete">
+        @for (type of filteredDividendTypes(); track type.id) {
+          <mat-option [value]="type.name">
+            {{ type.name }}
+          </mat-option>
+        }
+      </mat-autocomplete>
+      @if (dividendTypes.length === 0) {
+        <mat-hint>No types yet. Type a name and save to create one.</mat-hint>
+      }
+      <mat-error>Dividend type is required.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Payment Date</mat-label>
+      <input matInput type="date" formControlName="date" />
+      <mat-error>Date is required.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Dividend Amount ({{ accountCurrency }})</mat-label>
+      <input matInput type="number" min="0" step="0.01" formControlName="amount" />
+      <mat-error>Amount must be greater than zero.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Shares Held (optional)</mat-label>
+      <input matInput type="number" min="0" step="0.000001" formControlName="sharesHeld" />
+      <mat-error>Shares held cannot be negative.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Notes (optional)</mat-label>
+      <input matInput maxlength="500" formControlName="notes" />
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close type="button">Cancel</button>
+  <button mat-raised-button color="primary" type="button" (click)="submit()" [disabled]="isSavingType || isCreatingSymbol">
+    {{ isEditMode ? 'Save Changes' : 'Create Dividend' }}
+  </button>
+</mat-dialog-actions>

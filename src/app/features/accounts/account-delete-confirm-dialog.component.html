@@ -1,0 +1,22 @@
+<h2 mat-dialog-title>
+  <mat-icon class="warning-icon">warning</mat-icon>
+  Delete Account
+</h2>
+
+<mat-dialog-content>
+  <p>
+    You are about to permanently delete <strong>{{ accountName }}</strong>.
+  </p>
+  <p>
+    This will also remove all related records (transactions, dividends, dividend types, cash events, and symbols).
+  </p>
+  <p>
+    Estimated records to remove: <strong>{{ relatedRecordCount }}</strong>
+  </p>
+  <p class="warning-text">This action cannot be undone.</p>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+  <button mat-flat-button color="warn" type="button" (click)="confirmDelete()">Delete Account</button>
+</mat-dialog-actions>

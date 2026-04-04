@@ -1,0 +1,55 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>Symbols</mat-card-title>
+    <mat-card-subtitle>Track ticker symbols and display names per account.</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (!accounts().length) {
+      <p class="empty-state">Create an account first to manage symbols.</p>
+    } @else {
+      <div class="toolbar-row">
+        <mat-form-field appearance="outline" class="account-field">
+          <mat-label>Account</mat-label>
+          <mat-select
+            [value]="selectedAccountId()"
+            (valueChange)="onAccountChanged($event)">
+            @for (account of accounts(); track account.id) {
+              <mat-option [value]="account.id">
+                {{ account.name }} ({{ account.currency }})
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" type="button" (click)="openAddDialog()" [disabled]="isSaving">
+          <mat-icon>add</mat-icon>
+          Add Symbol
+        </button>
+      </div>
+
+      @if (feedbackMessage) {
+        <p class="feedback">{{ feedbackMessage }}</p>
+      }
+
+      @if (!symbols().length) {
+        <p class="empty-state">No symbols yet for this account.</p>
+      } @else {
+        <div class="symbols-grid">
+          @for (symbol of symbols(); track symbol.id) {
+            <mat-card class="symbol-card" appearance="outlined">
+              <mat-card-header>
+                <mat-card-title>{{ symbol.symbol }}</mat-card-title>
+                <mat-card-subtitle>{{ symbol.fullName }}</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-actions align="end">
+                <button mat-button type="button" (click)="openEditDialog(symbol)" [disabled]="isSaving">Edit</button>
+                <button mat-button type="button" (click)="deleteSymbol(symbol)" [disabled]="isSaving">Remove</button>
+              </mat-card-actions>
+            </mat-card>
+          }
+        </div>
+      }
+    }
+  </mat-card-content>
+</mat-card>

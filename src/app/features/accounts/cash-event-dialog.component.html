@@ -1,0 +1,38 @@
+<h2 mat-dialog-title>{{ isEditMode ? 'Edit Cash Entry' : 'Add Cash Entry' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="cash-form">
+    <mat-form-field appearance="outline">
+      <mat-label>Entry Type</mat-label>
+      <mat-select formControlName="type">
+        <mat-option value="deposit">Deposit</mat-option>
+        <mat-option value="withdrawal">Withdrawal</mat-option>
+      </mat-select>
+      <mat-error>Entry type is required.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Date</mat-label>
+      <input matInput type="date" formControlName="date" />
+      <mat-error>Date is required.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Amount ({{ accountCurrency }})</mat-label>
+      <input matInput type="number" min="0" step="0.01" formControlName="amount" />
+      <mat-error>Amount must be greater than zero.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Notes (optional)</mat-label>
+      <input matInput maxlength="500" formControlName="notes" />
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close type="button">Cancel</button>
+  <button mat-raised-button color="primary" type="button" (click)="submit()">
+    {{ isEditMode ? 'Save Changes' : 'Create Entry' }}
+  </button>
+</mat-dialog-actions>

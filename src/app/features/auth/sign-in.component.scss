@@ -1,0 +1,19 @@
+:host {
+  display: block;
+}
+
+.sign-in-page {
+  display: grid;
+  place-items: center;
+  min-height: calc(100vh - 64px);
+  padding: 24px;
+}
+
+.sign-in-page mat-card {
+  width: 100%;
+  max-width: 560px;
+}
+
+.error-text {
+  color: #b00020;
+}

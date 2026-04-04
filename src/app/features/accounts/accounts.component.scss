@@ -1,0 +1,44 @@
+:host {
+	display: block;
+}
+
+mat-card-content {
+	display: grid;
+	gap: 1rem;
+}
+
+.actions-row {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.feedback {
+	margin: 0;
+}
+
+.empty-state {
+	margin: 0;
+	color: rgba(0, 0, 0, 0.7);
+}
+
+.account-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 1rem;
+}
+
+.account-card p {
+	margin: 0.25rem 0;
+}
+
+.account-card-clickable {
+	cursor: pointer;
+	transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.account-card-clickable:hover {
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+	transform: translateY(-2px);
+}

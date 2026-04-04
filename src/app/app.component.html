@@ -1,0 +1,33 @@
+<mat-toolbar color="primary">
+  <span>{{ title }}</span>
+  <span class="toolbar-spacer"></span>
+  @if (isAuthenticated()) {
+    <span class="user-email">{{ user()?.email }}</span>
+    <button mat-stroked-button type="button" (click)="signOut()">Sign Out</button>
+  } @else {
+    <button mat-stroked-button type="button" [routerLink]="'/sign-in'">Sign In</button>
+  }
+</mat-toolbar>
+
+@if (isAuthenticated()) {
+  <mat-sidenav-container class="sidenav-container">
+    <mat-sidenav mode="side" opened class="sidenav">
+      <mat-nav-list>
+        @for (item of navItems; track item.route) {
+          <a mat-list-item [routerLink]="item.route" routerLinkActive="active-link">
+            <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+            <span matListItemTitle>{{ item.label }}</span>
+          </a>
+        }
+      </mat-nav-list>
+    </mat-sidenav>
+
+    <mat-sidenav-content class="content">
+      <router-outlet />
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+} @else {
+  <main class="public-content">
+    <router-outlet />
+  </main>
+}

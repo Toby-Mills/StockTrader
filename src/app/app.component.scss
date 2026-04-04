@@ -1,0 +1,28 @@
+.sidenav-container {
+  height: calc(100vh - 64px);
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.user-email {
+  margin-right: 1rem;
+  opacity: 0.95;
+}
+
+.sidenav {
+  width: 220px;
+}
+
+.content {
+  padding: 24px;
+}
+
+.active-link {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.public-content {
+  min-height: calc(100vh - 64px);
+}

@@ -1,0 +1,19 @@
+.tx-form {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+.totals {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.totals p {
+  margin: 0.25rem 0;
+}

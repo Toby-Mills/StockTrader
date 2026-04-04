@@ -1,0 +1,40 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>Your Accounts</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div class="actions-row">
+      <button mat-raised-button color="primary" type="button" (click)="openAddDialog()" [disabled]="isSaving">
+        <mat-icon>add</mat-icon>
+        Add Account
+      </button>
+      @if (feedbackMessage) {
+        <p class="feedback">{{ feedbackMessage }}</p>
+      }
+    </div>
+
+    @if (accounts().length === 0) {
+      <p class="empty-state">No accounts yet. Add your first account to get started.</p>
+    } @else {
+      <div class="account-grid">
+      @for (account of accounts(); track account.id) {
+        <mat-card class="account-card account-card-clickable" appearance="outlined" (click)="viewAccountDetails(account.id)">
+            <mat-card-header>
+              <mat-card-title>{{ account.name }}</mat-card-title>
+              <mat-card-subtitle>{{ account.currency }}</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <p><strong>Platform:</strong> {{ account.platform || account.broker || 'Not set' }}</p>
+              <p><strong>Account Number:</strong> {{ account.accountNumber || 'Not set' }}</p>
+            </mat-card-content>
+            <mat-card-actions align="end">
+              <button mat-button type="button" (click)="openEditDialog(account); $event.stopPropagation()" [disabled]="isSaving">
+                Edit
+              </button>
+            </mat-card-actions>
+          </mat-card>
+        }
+      </div>
+    }
+  </mat-card-content>
+</mat-card>
