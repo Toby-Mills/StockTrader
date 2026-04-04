@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -40,19 +40,20 @@ interface CashLedgerRow {
 }
 
 @Component({
-    selector: 'app-account-details',
-    imports: [
-        CommonModule,
-        MatCardModule,
-        MatButtonModule,
-        MatFormFieldModule,
-        MatSelectModule,
-        MatIconModule,
-        MatDialogModule,
-        MatTabsModule,
-    ],
-    templateUrl: './account-details.component.html',
-    styleUrl: './account-details.component.scss'
+  selector: 'app-account-details',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatIconModule,
+    MatDialogModule,
+    MatTabsModule,
+  ],
+  templateUrl: './account-details.component.html',
+  styleUrl: './account-details.component.scss',
 })
 export class AccountDetailsComponent {
   private readonly route = inject(ActivatedRoute);
