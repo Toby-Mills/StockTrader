@@ -1,8 +1,53 @@
 <h2 mat-dialog-title>{{ isEditMode ? 'Edit Transaction' : 'Add Transaction' }}</h2>
 
 <mat-dialog-content>
+  <div class="import-tools">
+    <input
+      #pdfInput
+      type="file"
+      accept="application/pdf,.pdf"
+      class="hidden-pdf-input"
+      (change)="onPdfSelected($event)"
+    />
+
+    <div class="import-controls">
+      <select
+        class="model-select"
+        [(ngModel)]="selectedModel"
+        [disabled]="isImportingPdf"
+        aria-label="AI model"
+      >
+        @for (model of availableModels; track model.value) {
+          <option [value]="model.value">{{ model.label }}</option>
+        }
+      </select>
+
+      <button
+        mat-stroked-button
+        color="primary"
+        type="button"
+        (click)="openImportPicker(pdfInput)"
+        [disabled]="isImportingPdf || isCreatingSymbol"
+      >
+        {{ isImportingPdf ? 'Importing PDF...' : 'Import from PDF' }}
+      </button>
+    </div>
+
+    @if (importMessage) {
+      <p class="import-message">{{ importMessage }}</p>
+    }
+
+    @if (importWarnings.length) {
+      <ul class="import-warnings">
+        @for (warning of importWarnings; track warning) {
+          <li>{{ warning }}</li>
+        }
+      </ul>
+    }
+  </div>
+
   <form [formGroup]="form" class="tx-form">
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('symbol')">
       <mat-label>Stock / Fund Symbol</mat-label>
       <mat-select formControlName="symbol" (selectionChange)="onSymbolSelectionChanged($event.value)">
         <mat-option value="__CREATE_NEW_SYMBOL__">+ Create new symbol...</mat-option>
@@ -20,7 +65,7 @@
       <mat-error>Symbol is required.</mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('type')">
       <mat-label>Transaction Type</mat-label>
       <mat-select formControlName="type">
         <mat-option value="buy">Purchase</mat-option>
@@ -29,25 +74,25 @@
       <mat-error>Type is required.</mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('date')">
       <mat-label>Date</mat-label>
       <input matInput type="date" formControlName="date" />
       <mat-error>Date is required.</mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('quantity')">
       <mat-label>Number of Shares</mat-label>
       <input matInput type="number" min="0" step="0.000001" formControlName="quantity" />
       <mat-error>Quantity must be greater than zero.</mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('price')">
       <mat-label>Price Per Share ({{ accountCurrency }})</mat-label>
       <input matInput type="number" min="0" step="0.0001" formControlName="price" />
       <mat-error>Price must be zero or more.</mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('fees')">
       <mat-label>Total Fees ({{ accountCurrency }})</mat-label>
       <input matInput type="number" min="0" step="0.01" formControlName="fees" />
       <mat-error>Fees must be zero or more.</mat-error>

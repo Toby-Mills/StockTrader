@@ -4,6 +4,54 @@
   padding-top: 0.25rem;
 }
 
+.import-tools {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.import-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.model-select {
+  height: 36px;
+  padding: 0 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.38);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background: transparent;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.hidden-pdf-input {
+  display: none;
+}
+
+.import-message {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.import-warnings {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.imported-field {
+  background: linear-gradient(90deg, rgba(255, 235, 59, 0.16), rgba(255, 235, 59, 0));
+  border-radius: 8px;
+  padding: 0.1rem 0.35rem;
+}
+
 mat-form-field {
   width: 100%;
 }

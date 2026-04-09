@@ -1,5 +1,5 @@
 import { Component, Inject } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -10,6 +10,8 @@ import { firstValueFrom } from 'rxjs';
 import { Transaction, TransactionType } from '../../core/models/transaction.model';
 import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
 import { SymbolCatalogService } from '../../core/services/symbol-catalog.service';
+import { TransactionFormPrefillPayload } from '../../core/models/transaction-import.model';
+import { TransactionPdfImportError, TransactionPdfImportService } from '../../core/services/transaction-pdf-import.service';
 import { SymbolDialogComponent } from '../symbols/symbol-dialog.component';
 
 interface TransactionDialogData {
@@ -33,6 +35,7 @@ export interface TransactionDialogResult {
     standalone: true,
     selector: 'app-transaction-dialog',
     imports: [
+        FormsModule,
         ReactiveFormsModule,
         MatDialogModule,
         MatFormFieldModule,
@@ -52,13 +55,26 @@ export class TransactionDialogComponent {
   symbols: TrackedSymbol[];
 
   readonly form;
+  readonly availableModels = [
+    { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+  ];
+  selectedModel = 'gemini-2.5-flash-lite';
   symbolMessage = '';
   isCreatingSymbol = false;
+  isImportingPdf = false;
+  importMessage = '';
+  importWarnings: string[] = [];
+  private importedFields = new Set<string>();
 
   constructor(
     private readonly fb: FormBuilder,
     private readonly dialog: MatDialog,
     private readonly symbolCatalogService: SymbolCatalogService,
+    private readonly transactionPdfImportService: TransactionPdfImportService,
     private readonly dialogRef: MatDialogRef<TransactionDialogComponent, TransactionDialogResult>,
     @Inject(MAT_DIALOG_DATA) data: TransactionDialogData | null
   ) {
@@ -100,6 +116,57 @@ export class TransactionDialogComponent {
 
     this.form.controls.symbol.setValue('');
     await this.openCreateSymbolDialog();
+  }
+
+  openImportPicker(fileInput: HTMLInputElement): void {
+    if (this.isImportingPdf) {
+      return;
+    }
+
+    this.importMessage = '';
+    this.importWarnings = [];
+    fileInput.click();
+  }
+
+  async onPdfSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file || this.isImportingPdf) {
+      return;
+    }
+
+    this.isImportingPdf = true;
+    this.importMessage = '';
+    this.importWarnings = [];
+
+    try {
+      const result = await this.transactionPdfImportService.importSingleTransaction(file, this.accountCurrency, this.selectedModel);
+      const parsed = result.parsedTransaction;
+
+      if (!parsed) {
+        throw new Error('No transaction data was extracted from the selected PDF.');
+      }
+
+      this.applyImportedPrefill(this.transactionPdfImportService.toFormPrefill(parsed));
+      this.importWarnings = [...result.warnings, ...(result.diagnostics ?? [])];
+      const confidence = Math.round(result.confidence * 100);
+      this.importMessage = `Imported values were added to the form (confidence ${confidence}%). Review before saving.`;
+    } catch (error) {
+      if (error instanceof TransactionPdfImportError) {
+        this.importWarnings = error.diagnostics;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      this.importMessage = `Import failed: ${message}`;
+    } finally {
+      this.isImportingPdf = false;
+      input.value = '';
+    }
+  }
+
+  isFieldImported(fieldName: string): boolean {
+    return this.importedFields.has(fieldName);
   }
 
   submit(): void {
@@ -210,6 +277,108 @@ export class TransactionDialogComponent {
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
+  }
+
+  private applyImportedPrefill(prefill: TransactionFormPrefillPayload): void {
+    const patch: Partial<{
+      symbol: string;
+      type: TransactionType;
+      date: string;
+      quantity: number;
+      price: number;
+      fees: number;
+    }> = {};
+
+    this.importedFields.clear();
+    this.symbolMessage = '';
+
+    if (prefill.symbol) {
+      const normalizedSymbol = prefill.symbol.trim().toUpperCase();
+      this.ensureImportedSymbolAvailable(normalizedSymbol);
+      patch.symbol = normalizedSymbol;
+      this.importedFields.add('symbol');
+    } else if (prefill.fullName) {
+      const matchedSymbol = this.findSymbolByFullName(prefill.fullName);
+      if (matchedSymbol) {
+        patch.symbol = matchedSymbol;
+        this.importedFields.add('symbol');
+        this.symbolMessage = `Matched imported name "${prefill.fullName}" to ${matchedSymbol}.`;
+      } else {
+        this.symbolMessage = `Imported name "${prefill.fullName}" did not match any tracked symbol. Please select one manually.`;
+      }
+    }
+
+    if (prefill.type) {
+      patch.type = prefill.type;
+      this.importedFields.add('type');
+    }
+
+    if (prefill.transactionDate) {
+      patch.date = this.toInputDate(prefill.transactionDate);
+      this.importedFields.add('date');
+    }
+
+    if (prefill.quantity !== undefined) {
+      patch.quantity = prefill.quantity;
+      this.importedFields.add('quantity');
+    }
+
+    if (prefill.price !== undefined) {
+      patch.price = prefill.price;
+      this.importedFields.add('price');
+    }
+
+    if (prefill.fees !== undefined) {
+      patch.fees = prefill.fees;
+      this.importedFields.add('fees');
+    }
+
+    this.form.patchValue(patch);
+    this.form.markAsDirty();
+  }
+
+  private findSymbolByFullName(fullName: string): string | undefined {
+    const normalizedFullName = this.normalizeName(fullName);
+    if (!normalizedFullName) {
+      return undefined;
+    }
+
+    const exactMatch = this.symbols.find(
+      existing => this.normalizeName(existing.fullName) === normalizedFullName
+    );
+    if (exactMatch) {
+      return exactMatch.symbol;
+    }
+
+    const partialMatch = this.symbols.find((existing) => {
+      const normalizedExisting = this.normalizeName(existing.fullName);
+      return (
+        normalizedExisting.includes(normalizedFullName) || normalizedFullName.includes(normalizedExisting)
+      );
+    });
+
+    return partialMatch?.symbol;
+  }
+
+  private normalizeName(value: string): string {
+    return value.trim().replace(/\s+/g, ' ').toUpperCase();
+  }
+
+  private ensureImportedSymbolAvailable(symbol: string): void {
+    const exists = this.symbols.some(existing => existing.symbol.toUpperCase() === symbol);
+    if (exists) {
+      return;
+    }
+
+    this.symbols = [
+      ...this.symbols,
+      {
+        id: `imported-${symbol}`,
+        accountId: this.dialogData.accountId,
+        symbol,
+        fullName: 'Imported symbol (not yet in catalog)',
+      },
+    ].sort((a, b) => a.symbol.localeCompare(b.symbol));
   }
 
   private toDate(rawDate: unknown): Date | null {
