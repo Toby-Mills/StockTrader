@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { firstValueFrom } from 'rxjs';
@@ -39,6 +40,7 @@ export interface TransactionDialogResult {
         ReactiveFormsModule,
         MatDialogModule,
         MatFormFieldModule,
+        MatIconModule,
         MatInputModule,
         MatSelectModule,
         MatButtonModule,
@@ -67,6 +69,8 @@ export class TransactionDialogComponent {
   isCreatingSymbol = false;
   isImportingPdf = false;
   importMessage = '';
+  importError: string | null = null;
+  importErrorDiagnostics: string[] = [];
   importWarnings: string[] = [];
   private importedFields = new Set<string>();
 
@@ -124,6 +128,8 @@ export class TransactionDialogComponent {
     }
 
     this.importMessage = '';
+    this.importError = null;
+    this.importErrorDiagnostics = [];
     this.importWarnings = [];
     fileInput.click();
   }
@@ -136,8 +142,10 @@ export class TransactionDialogComponent {
       return;
     }
 
-    this.isImportingPdf = true;
+    this.setImportingState(true);
     this.importMessage = '';
+    this.importError = null;
+    this.importErrorDiagnostics = [];
     this.importWarnings = [];
 
     try {
@@ -154,19 +162,33 @@ export class TransactionDialogComponent {
       this.importMessage = `Imported values were added to the form (confidence ${confidence}%). Review before saving.`;
     } catch (error) {
       if (error instanceof TransactionPdfImportError) {
-        this.importWarnings = error.diagnostics;
+        this.importErrorDiagnostics = error.diagnostics;
       }
 
       const message = error instanceof Error ? error.message : String(error);
-      this.importMessage = `Import failed: ${message}`;
+      this.importError = message;
     } finally {
-      this.isImportingPdf = false;
+      this.setImportingState(false);
       input.value = '';
     }
   }
 
   isFieldImported(fieldName: string): boolean {
     return this.importedFields.has(fieldName);
+  }
+
+  showErrorDetails(): void {
+    if (!this.importError) {
+      return;
+    }
+
+    this.dialog.open(ImportErrorDialogComponent, {
+      width: '500px',
+      data: {
+        message: this.importError,
+        diagnostics: this.importErrorDiagnostics,
+      },
+    });
   }
 
   submit(): void {
@@ -397,5 +419,80 @@ export class TransactionDialogComponent {
 
     const parsed = new Date(rawDate as string | number);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private setImportingState(isImporting: boolean): void {
+    this.isImportingPdf = isImporting;
+    this.dialogRef.disableClose = isImporting;
+  }
+}
+
+interface ImportErrorDialogData {
+  message: string;
+  diagnostics?: string[];
+}
+
+@Component({
+  standalone: true,
+  selector: 'app-import-error-dialog',
+  imports: [MatDialogModule, MatButtonModule],
+  template: `
+    <h2 mat-dialog-title>Import Error</h2>
+    <mat-dialog-content>
+      <p class="error-message">{{ data.message }}</p>
+      @if (filteredDiagnostics.length) {
+        <div class="diagnostics">
+          <p class="diagnostics-label">Details:</p>
+          <ul class="diagnostics-list">
+            @for (diag of filteredDiagnostics; track diag) {
+              <li>{{ diag }}</li>
+            }
+          </ul>
+        </div>
+      }
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Close</button>
+    </mat-dialog-actions>
+  `,
+  styles: [`
+    .error-message {
+      word-break: break-word;
+      font-family: monospace;
+      font-size: 0.9rem;
+      padding: 0.5rem;
+      background-color: rgba(244, 67, 54, 0.1);
+      border-left: 4px solid #f44336;
+      border-radius: 2px;
+      margin: 0 0 1rem 0;
+    }
+
+    .diagnostics {
+      margin-top: 1rem;
+    }
+
+    .diagnostics-label {
+      font-weight: 500;
+      font-size: 0.9rem;
+      margin: 0 0 0.5rem 0;
+    }
+
+    .diagnostics-list {
+      margin: 0;
+      padding-left: 1.5rem;
+      font-size: 0.85rem;
+    }
+
+    .diagnostics-list li {
+      margin-bottom: 0.25rem;
+      word-break: break-word;
+    }
+  `]
+})
+class ImportErrorDialogComponent {
+  readonly filteredDiagnostics: string[];
+
+  constructor(@Inject(MAT_DIALOG_DATA) readonly data: ImportErrorDialogData) {
+    this.filteredDiagnostics = (data.diagnostics ?? []).filter(diag => !diag.startsWith('Error message:'));
   }
 }

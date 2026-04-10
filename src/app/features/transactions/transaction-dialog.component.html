@@ -1,6 +1,6 @@
 <h2 mat-dialog-title>{{ isEditMode ? 'Edit Transaction' : 'Add Transaction' }}</h2>
 
-<mat-dialog-content>
+<mat-dialog-content [class.dialog-importing]="isImportingPdf" [attr.aria-busy]="isImportingPdf">
   <div class="import-tools">
     <input
       #pdfInput
@@ -11,6 +11,17 @@
     />
 
     <div class="import-controls">
+      <button
+        mat-stroked-button
+        color="primary"
+        type="button"
+        (click)="openImportPicker(pdfInput)"
+        [disabled]="isImportingPdf || isCreatingSymbol"
+        [class.importing-button]="isImportingPdf"
+      >
+        {{ isImportingPdf ? 'Importing PDF...' : 'Import from PDF' }}
+      </button>
+
       <select
         class="model-select"
         [(ngModel)]="selectedModel"
@@ -21,32 +32,36 @@
           <option [value]="model.value">{{ model.label }}</option>
         }
       </select>
-
-      <button
-        mat-stroked-button
-        color="primary"
-        type="button"
-        (click)="openImportPicker(pdfInput)"
-        [disabled]="isImportingPdf || isCreatingSymbol"
-      >
-        {{ isImportingPdf ? 'Importing PDF...' : 'Import from PDF' }}
-      </button>
     </div>
 
-    @if (importMessage) {
-      <p class="import-message">{{ importMessage }}</p>
+    @if (isImportingPdf) {
+      <div class="importing-notice" role="status" aria-live="polite">
+        <mat-icon>hourglass_top</mat-icon>
+        <span>Import in progress. Please wait while we read your PDF.</span>
+      </div>
     }
 
-    @if (importWarnings.length) {
-      <ul class="import-warnings">
-        @for (warning of importWarnings; track warning) {
-          <li>{{ warning }}</li>
-        }
-      </ul>
+    @if (importError) {
+      <button type="button" (click)="showErrorDetails()" class="error-indicator">
+        <mat-icon>error</mat-icon>
+        <span>Import error occurred</span>
+      </button>
+    } @else {
+      @if (importMessage) {
+        <p class="import-message">{{ importMessage }}</p>
+      }
+
+      @if (importWarnings.length) {
+        <ul class="import-warnings">
+          @for (warning of importWarnings; track warning) {
+            <li>{{ warning }}</li>
+          }
+        </ul>
+      }
     }
   </div>
 
-  <form [formGroup]="form" class="tx-form">
+  <form [formGroup]="form" class="tx-form" [class.importing]="isImportingPdf">
     <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('symbol')">
       <mat-label>Stock / Fund Symbol</mat-label>
       <mat-select formControlName="symbol" (selectionChange)="onSymbolSelectionChanged($event.value)">
@@ -106,8 +121,8 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button mat-dialog-close type="button">Cancel</button>
-  <button mat-raised-button color="primary" type="button" (click)="submit()" [disabled]="isCreatingSymbol">
+  <button mat-button mat-dialog-close type="button" [disabled]="isImportingPdf">Cancel</button>
+  <button mat-raised-button color="primary" type="button" (click)="submit()" [disabled]="isImportingPdf || isCreatingSymbol">
     {{ isEditMode ? 'Save Changes' : 'Create Transaction' }}
   </button>
 </mat-dialog-actions>
