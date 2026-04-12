@@ -16,6 +16,52 @@
   gap: 0.5rem;
 }
 
+.import-drop-zone {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed rgba(0, 0, 0, 0.28);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+
+  &.drag-over {
+    border-color: #1976d2;
+    background: rgba(25, 118, 210, 0.1);
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.18);
+    transform: translateY(-1px);
+  }
+
+  &.disabled {
+    opacity: 0.8;
+  }
+}
+
+.drop-zone-feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  color: rgba(0, 0, 0, 0.66);
+
+  mat-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    font-size: 1.1rem;
+  }
+
+  &.active {
+    color: #1565c0;
+    font-weight: 600;
+    animation: drop-zone-pulse 0.9s ease-in-out infinite alternate;
+  }
+}
+
+.drop-zone-hint {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
 .importing-button {
   font-weight: 600;
 }
@@ -147,5 +193,15 @@ mat-form-field {
 
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes drop-zone-pulse {
+  from {
+    opacity: 0.75;
+  }
+
+  to {
+    opacity: 1;
   }
 }

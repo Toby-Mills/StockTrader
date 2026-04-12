@@ -74,11 +74,13 @@ export class TransactionDialogComponent {
   symbolMessage = '';
   isCreatingSymbol = false;
   isImportingPdf = false;
+  isPdfDragOver = false;
   importMessage = '';
   importError: string | null = null;
   importErrorDiagnostics: string[] = [];
   importWarnings: string[] = [];
   private importedFields = new Set<string>();
+  private pdfDragDepth = 0;
 
   constructor(
     private readonly fb: FormBuilder,
@@ -144,7 +146,76 @@ export class TransactionDialogComponent {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
 
-    if (!file || this.isImportingPdf) {
+    if (!file) {
+      return;
+    }
+
+    await this.importPdfFile(file);
+    input.value = '';
+  }
+
+  onPdfDragOver(event: DragEvent): void {
+    if (this.isImportingPdf) {
+      return;
+    }
+
+    if (!this.isFileDrag(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+    this.isPdfDragOver = true;
+  }
+
+  onPdfDragEnter(event: DragEvent): void {
+    if (this.isImportingPdf) {
+      return;
+    }
+
+    if (!this.isFileDrag(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    this.pdfDragDepth += 1;
+    this.isPdfDragOver = true;
+  }
+
+  onPdfDragLeave(event: DragEvent): void {
+    event.preventDefault();
+
+    if (!this.isFileDrag(event)) {
+      return;
+    }
+
+    this.pdfDragDepth = Math.max(0, this.pdfDragDepth - 1);
+    if (this.pdfDragDepth === 0) {
+      this.isPdfDragOver = false;
+    }
+  }
+
+  async onPdfDrop(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    this.pdfDragDepth = 0;
+    this.isPdfDragOver = false;
+
+    if (this.isImportingPdf) {
+      return;
+    }
+
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    await this.importPdfFile(file);
+  }
+
+  private async importPdfFile(file: File): Promise<void> {
+    if (this.isImportingPdf) {
       return;
     }
 
@@ -175,8 +246,13 @@ export class TransactionDialogComponent {
       this.importError = message;
     } finally {
       this.setImportingState(false);
-      input.value = '';
+      this.pdfDragDepth = 0;
+      this.isPdfDragOver = false;
     }
+  }
+
+  get dropZoneHint(): string {
+    return this.isPdfDragOver ? 'Release to import this PDF' : 'Or drag and drop a PDF here';
   }
 
   isFieldImported(fieldName: string): boolean {
@@ -440,6 +516,10 @@ export class TransactionDialogComponent {
   private setImportingState(isImporting: boolean): void {
     this.isImportingPdf = isImporting;
     this.dialogRef.disableClose = isImporting;
+  }
+
+  private isFileDrag(event: DragEvent): boolean {
+    return event.dataTransfer?.types?.includes('Files') ?? false;
   }
 }
 

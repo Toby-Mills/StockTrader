@@ -10,28 +10,43 @@
       (change)="onPdfSelected($event)"
     />
 
-    <div class="import-controls">
-      <button
-        mat-stroked-button
-        color="primary"
-        type="button"
-        (click)="openImportPicker(pdfInput)"
-        [disabled]="isImportingPdf || isCreatingSymbol"
-        [class.importing-button]="isImportingPdf"
-      >
-        {{ isImportingPdf ? 'Importing PDF...' : 'Import from PDF' }}
-      </button>
+    <div
+      class="import-drop-zone"
+      [class.drag-over]="isPdfDragOver"
+      [class.disabled]="isImportingPdf"
+      (dragenter)="onPdfDragEnter($event)"
+      (dragover)="onPdfDragOver($event)"
+      (dragleave)="onPdfDragLeave($event)"
+      (drop)="onPdfDrop($event)"
+    >
+      <div class="import-controls">
+        <button
+          mat-stroked-button
+          color="primary"
+          type="button"
+          (click)="openImportPicker(pdfInput)"
+          [disabled]="isImportingPdf || isCreatingSymbol"
+          [class.importing-button]="isImportingPdf"
+        >
+          {{ isImportingPdf ? 'Importing PDF...' : 'Import from PDF' }}
+        </button>
 
-      <select
-        class="model-select"
-        [(ngModel)]="selectedModel"
-        [disabled]="isImportingPdf"
-        aria-label="AI model"
-      >
-        @for (model of availableModels; track model.value) {
-          <option [value]="model.value">{{ model.label }}</option>
-        }
-      </select>
+        <select
+          class="model-select"
+          [(ngModel)]="selectedModel"
+          [disabled]="isImportingPdf"
+          aria-label="AI model"
+        >
+          @for (model of availableModels; track model.value) {
+            <option [value]="model.value">{{ model.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="drop-zone-feedback" [class.active]="isPdfDragOver" aria-live="polite">
+        <mat-icon>{{ isPdfDragOver ? 'move_to_inbox' : 'upload_file' }}</mat-icon>
+        <p class="drop-zone-hint">{{ dropZoneHint }}</p>
+      </div>
     </div>
 
     @if (isImportingPdf) {
