@@ -12,10 +12,11 @@ import {
   serverTimestamp,
   updateDoc,
 } from '@angular/fire/firestore';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { CashEvent } from '../models/cash-event.model';
 import { AuthService } from './auth.service';
 import { stripUndefined } from '../utils/strip-undefined';
+import { sortByDateAndCreatedAt } from '../utils/record-sort';
 
 @Injectable({ providedIn: 'root' })
 export class CashEventService {
@@ -33,7 +34,8 @@ export class CashEventService {
 
   getCashEvents(accountId: string): Observable<CashEvent[]> {
     const q = query(this.cashEventRef(accountId), orderBy('date', 'desc'));
-    return collectionData(q, { idField: 'id' }) as Observable<CashEvent[]>;
+    return (collectionData(q, { idField: 'id' }) as Observable<CashEvent[]>)
+      .pipe(map(events => sortByDateAndCreatedAt(events)));
   }
 
   addCashEvent(accountId: string, event: Omit<CashEvent, 'id' | 'accountId' | 'createdAt'>): Promise<void> {

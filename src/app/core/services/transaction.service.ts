@@ -12,10 +12,11 @@ import {
   orderBy,
   serverTimestamp,
 } from '@angular/fire/firestore';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { Transaction } from '../models/transaction.model';
 import { AuthService } from './auth.service';
 import { stripUndefined } from '../utils/strip-undefined';
+import { sortByDateAndCreatedAt } from '../utils/record-sort';
 
 @Injectable({ providedIn: 'root' })
 export class TransactionService {
@@ -33,7 +34,8 @@ export class TransactionService {
 
   getTransactions(accountId: string): Observable<Transaction[]> {
     const q = query(this.txRef(accountId), orderBy('date', 'desc'));
-    return collectionData(q, { idField: 'id' }) as Observable<Transaction[]>;
+    return (collectionData(q, { idField: 'id' }) as Observable<Transaction[]>)
+      .pipe(map(transactions => sortByDateAndCreatedAt(transactions)));
   }
 
   addTransaction(accountId: string, tx: Omit<Transaction, 'id' | 'accountId' | 'createdAt'>): Promise<void> {

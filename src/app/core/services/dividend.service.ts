@@ -10,11 +10,13 @@ import {
   deleteDoc,
   query,
   orderBy,
+  serverTimestamp,
 } from '@angular/fire/firestore';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { Dividend } from '../models/dividend.model';
 import { AuthService } from './auth.service';
 import { stripUndefined } from '../utils/strip-undefined';
+import { sortByDateAndCreatedAt } from '../utils/record-sort';
 
 @Injectable({ providedIn: 'root' })
 export class DividendService {
@@ -32,11 +34,16 @@ export class DividendService {
 
   getDividends(accountId: string): Observable<Dividend[]> {
     const q = query(this.divRef(accountId), orderBy('date', 'desc'));
-    return collectionData(q, { idField: 'id' }) as Observable<Dividend[]>;
+    return (collectionData(q, { idField: 'id' }) as Observable<Dividend[]>)
+      .pipe(map(dividends => sortByDateAndCreatedAt(dividends)));
   }
 
-  addDividend(accountId: string, div: Omit<Dividend, 'id' | 'accountId'>): Promise<void> {
-    return addDoc(this.divRef(accountId), stripUndefined({ ...div, accountId })).then(() => undefined);
+  addDividend(accountId: string, div: Omit<Dividend, 'id' | 'accountId' | 'createdAt'>): Promise<void> {
+    return addDoc(this.divRef(accountId), stripUndefined({
+      ...div,
+      accountId,
+      createdAt: serverTimestamp(),
+    })).then(() => undefined);
   }
 
   updateDividend(accountId: string, id: string, changes: Partial<Dividend>): Promise<void> {

@@ -7,6 +7,7 @@ import {
   TransactionImportResult,
 } from '../models/transaction-import.model';
 import { TransactionType } from '../models/transaction.model';
+import { TrackedSymbol } from '../models/tracked-symbol.model';
 
 export class TransactionPdfImportError extends Error {
   constructor(
@@ -51,23 +52,36 @@ Do not invent values that are not grounded in the document.
 If no transaction data can be found at all, return an error payload.
 If any transaction property is missing, set it to null.
 
+Symbol matching rules (CRITICAL - ACCURACY IS ESSENTIAL):
+- You will receive a list of registered symbols with both ticker symbol and full name.
+- EXACT FULL STRING MATCHING ONLY. Do NOT use fuzzy matching, semantic matching, similarity matching, or substring matching.
+- This is CRITICAL. If you match the wrong security, you will cause serious data errors and the user will be fired from their job.
+- Ticker symbol: The ENTIRE ticker must match character-for-character (case-insensitive OK). For example, if the PDF says "VTSAX" and the list has "VTSAX", match it. If the PDF says "VTSAX" and the list has "VTS", do NOT match - these are DIFFERENT. If the PDF says "SYGNIA ITRIX MSCI US" and the list has "Sygnia Itrix 4th Industrial Revolution Global Equity ETF", do NOT match - the ticker is different from the fund name, these are DIFFERENT securities.
+- Full name: The ENTIRE full name must match character-for-character (case-insensitive OK). Do not match if it's only a substring or partial name.
+- DO NOT match based on shared words or substrings. For example, "Sygnia Itrix MSCI US" and "Sygnia Itrix 4th Industrial Revolution Global Equity ETF" both contain "Sygnia Itrix" but are COMPLETELY DIFFERENT securities and must NEVER be matched together.
+- DO NOT match based on semantic similarity or meaning.
+- If the document contains a ticker symbol, search the registered list for an EXACT COMPLETE match on that ticker only.
+- If the document contains a company/fund name, search the registered list for an EXACT COMPLETE match on that full name only.
+- If no exact complete match is found, leave symbol as null. Do not guess. It is better to leave symbol null than to match the wrong security.
+
 Identity rules:
 - Populate at least one of symbol or fullName whenever the traded security can be identified.
 - If both are present in the document, return both.
 - If the symbol is not present but a clear security/fund/company name is present, set fullName and leave symbol as null.
 - If only a symbol is present, set symbol and leave fullName as null.
+- NEVER return a symbol that does not match the registered symbols list. If unsure, leave symbol as null.
 
 Quantity rules:
 - quantity is the total number of units/shares purchased or sold.
-- Statements may list whole shares and fractional shares separately. Fractional shares may be labelled FSRs, Fractional Share Rights, or similar.
-- Fractional shares can appear as decimals without a leading zero and with a space after the decimal point, for example: ". 375". Interpret this as 0.375.
+- Statements always list whole shares and fractional shares separately. Fractional shares may be labelled FSRs, Fractional Share Rights, or similar.
+- Fractional shares appear as decimals often without a leading zero and decimal point, for example: "375". Interpret this as 0.375.
 - Fractional shares can also appear as integer digits next to an FSR label (for example "FSRs 5532"). In this case treat the digits as the fractional part: 5532 means 0.5532.
 - Always add whole shares and fractional shares together. Never return only the whole-share count.
 - Example: 10 Shares + 0.5 FSRs = quantity 10.5.
 - Example: 42 Shares + FSRs 5532 = quantity 42.5532.
 - Do NOT return only the whole shares and omit the FSRs, even if they are on a separate line item. Always sum them up and return the total quantity. For example, if the statement shows "10 Shares" and "0.5 FSRs", you should return quantity: 10.5, not just 10.
 - Do not treat a numeric value attached to an FSR label as a reference code unless the PDF explicitly says it is a reference/code/id field.
-- If you do not include the FSR amount in quantity, you will be fired.
+- If you do not include the FSR amount in quantity, the value will be wrong, and the end user will be fired for your mistake.
 
 Price rules:
 - price is the per-unit trade price in the account currency.
@@ -82,13 +96,18 @@ Fee rules:
 - Include items such as: Broker Commission, Settlement Fee, Investor Protection Levy, VAT on commission, VAT on fees, Securities Transfer Tax, STRATE fees, or any other line item that represents a cost of the transaction.
 - Do not include the cost of the shares themselves (quantity × price) as a fee.`;
 
-  private static readonly USER_PROMPT = `Extract a stock transaction from this PDF and return JSON in the success shape below.
+  private static readonly USER_PROMPT_TEMPLATE = `Extract a stock transaction from this PDF and return JSON in the success shape below.
+
+REGISTERED SYMBOLS TO MATCH AGAINST:
+{SYMBOLS_LIST}
 
 Rules:
 - Always use the success shape. Only use the error shape if no transaction data can be found at all.
 - Set any field you cannot find to null. Never omit a field from parsedTransaction.
 - Do not put field values inside warnings or diagnostics — always put them in parsedTransaction.
 - transactionDate must be YYYY-MM-DD.
+- CRITICAL - SYMBOL MATCHING (ACCURACY IS ESSENTIAL): Use EXACT FULL STRING MATCHING ONLY. This is critical - incorrect matches cause serious data errors and the user will lose their job. Do NOT use fuzzy matching, semantic matching, substring matching, or similarity-based matching. Look at the ticker symbol or company name in the PDF. Search the registered symbols list and ONLY match if the ENTIRE string matches character-for-character (case-insensitive is OK). For example, if the PDF shows ticker "SYGNIA ITRIX MSCI US" but the list has "Sygnia Itrix 4th Industrial Revolution Global Equity ETF", do NOT match - these are two COMPLETELY DIFFERENT securities. Just because both contain "Sygnia Itrix" does NOT mean they should be matched. If you cannot find an EXACT COMPLETE match (either full ticker code match OR full name match), leave symbol as null. It is ALWAYS better to leave symbol null than to match the wrong security.
+- If the document shows a company name that matches a registered fullName entry EXACTLY (case-insensitive and full string), use the corresponding ticker symbol for the symbol field.
 - Security identity: populate symbol or fullName (at least one when identifiable). If both are present, return both.
 - quantity: whole shares + fractional shares (FSRs) must always be added together. Never return only the whole-share count even if FSRs appear on a separate line.
 - quantity: if fractional shares are written like ". 375" (space after decimal and no leading zero), interpret as 0.375 and include in the total quantity.
@@ -124,11 +143,20 @@ Error shape (only when no transaction data exists at all):
   "diagnostics": ["string"]
 }`;
 
-  async importSingleTransaction(file: File, accountCurrency: string, model: string): Promise<TransactionImportResult> {
+  private static buildSymbolsListForPrompt(symbols: TrackedSymbol[]): string {
+    if (symbols.length === 0) {
+      return '(No registered symbols yet - leave symbol as null if not found in document)';
+    }
+
+    const symbolLines = symbols.map(s => `- ${s.symbol}: ${s.fullName}`).join('\n');
+    return symbolLines;
+  }
+
+  async importSingleTransaction(file: File, accountCurrency: string, model: string, symbols: TrackedSymbol[]): Promise<TransactionImportResult> {
     const warnings: string[] = [];
 
     this.validateFile(file, warnings);
-    const responsePayload = await this.runAiExtraction(file, accountCurrency, model);
+    const responsePayload = await this.runAiExtraction(file, accountCurrency, model, symbols);
     return this.normalizeAndValidate(responsePayload, warnings);
   }
 
@@ -160,8 +188,11 @@ Error shape (only when no transaction data exists at all):
     }
   }
 
-  private async runAiExtraction(file: File, accountCurrency: string, modelName: string): Promise<unknown> {
+  private async runAiExtraction(file: File, accountCurrency: string, modelName: string, symbols: TrackedSymbol[]): Promise<unknown> {
     const fileData = await this.toBase64(file);
+    const symbolsList = TransactionPdfImportService.buildSymbolsListForPrompt(symbols);
+    const userPrompt = TransactionPdfImportService.USER_PROMPT_TEMPLATE.replace('{SYMBOLS_LIST}', symbolsList);
+
     const ai = getAI(getApp(), { backend: new GoogleAIBackend() });
     const model = getGenerativeModel(ai, {
       model: modelName,
@@ -181,7 +212,7 @@ Error shape (only when no transaction data exists at all):
             role: 'user',
             parts: [
               {
-                text: `${TransactionPdfImportService.USER_PROMPT}\n\nAccount currency: ${accountCurrency}.`,
+                text: `${userPrompt}\n\nAccount currency: ${accountCurrency}.`,
               },
               {
                 inlineData: {
@@ -211,7 +242,7 @@ Error shape (only when no transaction data exists at all):
       });
 
       if (message.includes("reading 'some'") || message.includes('INVALID_CONTENT')) {
-        const fallbackProbe = await this.tryFallbackProbe(ai, fileData, accountCurrency, modelName);
+        const fallbackProbe = await this.tryFallbackProbe(ai, fileData, accountCurrency, modelName, symbols);
         if (fallbackProbe.payload) {
           const payloadWithDiagnostics = this.appendFallbackDiagnosticsToPayload(
             fallbackProbe.payload,
@@ -271,9 +302,12 @@ Error shape (only when no transaction data exists at all):
     ai: ReturnType<typeof getAI>,
     fileData: string,
     accountCurrency: string,
-    modelName: string
+    modelName: string,
+    symbols: TrackedSymbol[]
   ): Promise<{ diagnostics: string[]; payload?: unknown }> {
     const probeDiagnostics: string[] = [];
+    const symbolsList = TransactionPdfImportService.buildSymbolsListForPrompt(symbols);
+    const userPrompt = TransactionPdfImportService.USER_PROMPT_TEMPLATE.replace('{SYMBOLS_LIST}', symbolsList);
 
     const fallbackModel = getGenerativeModel(ai, {
       model: modelName,
@@ -290,7 +324,7 @@ Error shape (only when no transaction data exists at all):
             role: 'user',
             parts: [
               {
-                text: `${TransactionPdfImportService.USER_PROMPT}\n\nAccount currency: ${accountCurrency}.`,
+                text: `${userPrompt}\n\nAccount currency: ${accountCurrency}.`,
               },
               {
                 inlineData: {

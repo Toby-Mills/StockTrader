@@ -6,6 +6,7 @@ import { getAuth, provideAuth } from '@angular/fire/auth';
 import { initializeFirestore, provideFirestore } from '@angular/fire/firestore';
 import { routes } from './app.routes';
 import { environment } from '../environments/environment';
+import { appDateProviders } from './core/utils/app-date-format';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -13,6 +14,7 @@ export const appConfig: ApplicationConfig = {
     provideAnimations(),
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAuth(() => getAuth()),
+    ...appDateProviders,
     provideFirestore(() =>
       initializeFirestore(getApp(), {
         experimentalForceLongPolling: true,

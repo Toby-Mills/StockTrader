@@ -1,6 +1,7 @@
 import { Component, Inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,6 +27,7 @@ export interface CashEventDialogResult {
     selector: 'app-cash-event-dialog',
     imports: [
         ReactiveFormsModule,
+        MatDatepickerModule,
         MatDialogModule,
         MatFormFieldModule,
         MatIconModule,
@@ -52,7 +54,7 @@ export class CashEventDialogComponent {
 
     this.form = this.fb.nonNullable.group({
       type: [this.dialogData.cashEvent?.type ?? 'deposit' as CashEventType, [Validators.required]],
-      date: [this.toInputDate(this.dialogData.cashEvent?.date), [Validators.required]],
+      date: [this.toDate(this.dialogData.cashEvent?.date) ?? new Date(), [Validators.required]],
       amount: [this.dialogData.cashEvent?.amount ?? 0, [Validators.required, Validators.min(0.000001)]],
       notes: [this.dialogData.cashEvent?.notes ?? '', [Validators.maxLength(500)]],
     });
@@ -71,19 +73,16 @@ export class CashEventDialogComponent {
     const value = this.form.getRawValue();
     this.dialogRef.close({
       type: value.type,
-      date: new Date(`${value.date}T12:00:00`),
+      date: this.toNoonDate(value.date),
       amount: Number(value.amount),
       currency: this.accountCurrency,
       notes: value.notes?.trim() || undefined,
     });
   }
 
-  private toInputDate(rawDate: unknown): string {
+  private toNoonDate(rawDate: unknown): Date {
     const date = this.toDate(rawDate) ?? new Date();
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
   }
 
   private toDate(rawDate: unknown): Date | null {

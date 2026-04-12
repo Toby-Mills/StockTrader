@@ -16,7 +16,9 @@
 
     <mat-form-field appearance="outline">
       <mat-label>Date</mat-label>
-      <input matInput type="date" formControlName="date" />
+      <input matInput [matDatepicker]="cashEventDatePicker" formControlName="date" />
+      <mat-datepicker-toggle matIconSuffix [for]="cashEventDatePicker"></mat-datepicker-toggle>
+      <mat-datepicker #cashEventDatePicker></mat-datepicker>
       <mat-error>Date is required.</mat-error>
     </mat-form-field>
 

@@ -111,8 +111,9 @@ export class DividendsComponent {
       }
 
       const subscription = this.dividendService.getDividends(accountId).subscribe({
-        next: dividends => {
+        next: async dividends => {
           this.dividends.set(dividends);
+          await this.syncOrphanedDividendTypes(accountId, dividends);
           const symbol = this.selectedSymbol();
           if (symbol !== 'ALL' && !dividends.some(div => div.symbol.toUpperCase() === symbol)) {
             this.selectedSymbol.set('ALL');
@@ -365,6 +366,53 @@ export class DividendsComponent {
   private errorMessage(error: unknown, prefix: string): string {
     const message = error instanceof Error ? error.message : String(error);
     return `${prefix}: ${message}`;
+  }
+
+  private async syncOrphanedDividendTypes(accountId: string, dividends: Dividend[]): Promise<void> {
+    if (!accountId || dividends.length === 0) {
+      return;
+    }
+
+    // Collect all unique typeIds referenced by dividends
+    const referencedTypeIds = new Set<string>();
+    for (const dividend of dividends) {
+      if (dividend.dividendTypeId) {
+        referencedTypeIds.add(dividend.dividendTypeId);
+      }
+    }
+
+    if (referencedTypeIds.size === 0) {
+      return;
+    }
+
+    // Get current types to identify which are missing
+    const currentTypes = this.dividendTypes();
+    const existingTypeIds = new Set(currentTypes.map(t => t.id));
+    const orphanedTypeIds = Array.from(referencedTypeIds).filter(id => !existingTypeIds.has(id));
+
+    if (orphanedTypeIds.length === 0) {
+      return;
+    }
+
+    // Create placeholder records for orphaned types with their existing IDs
+    try {
+      for (const orphanedId of orphanedTypeIds) {
+        // Create a placeholder type with the orphaned ID so dividends can reference it
+        await this.dividendTypeService.addDividendTypeWithId(accountId, orphanedId, {
+          name: `Legacy Type (${orphanedId})`,
+          description: 'Auto-created from existing dividend record',
+        });
+      }
+
+      // Refresh types from Firestore to get the newly created types
+      const updatedTypes = await firstValueFrom(this.dividendTypeService.getDividendTypes(accountId));
+      this.dividendTypes.set(
+        [...updatedTypes].sort((a, b) => a.name.localeCompare(b.name))
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Could not sync orphaned dividend types: ${message}`);
+    }
   }
 
 }

@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -39,6 +40,7 @@ export interface DividendDialogResult {
     imports: [
         ReactiveFormsModule,
         MatAutocompleteModule,
+        MatDatepickerModule,
         MatDialogModule,
         MatFormFieldModule,
         MatInputModule,
@@ -89,8 +91,8 @@ export class DividendDialogComponent {
         this.resolveInitialDividendTypeName(),
         [Validators.required],
       ],
-      date: [this.toInputDate(this.dialogData.dividend?.date), [Validators.required]],
-      amount: [this.dialogData.dividend?.amount ?? 0, [Validators.required, Validators.min(0.000001)]],
+      date: [this.toDate(this.dialogData.dividend?.date) ?? new Date(), [Validators.required]],
+      amount: [this.dialogData.dividend?.amount ?? 0, [Validators.required]],
       sharesHeld: [this.dialogData.dividend?.sharesHeld ?? 0, [Validators.min(0)]],
       notes: [this.dialogData.dividend?.notes ?? '', [Validators.maxLength(500)]],
     });
@@ -100,11 +102,19 @@ export class DividendDialogComponent {
     return this.dialogData.accountCurrency;
   }
 
-  async onSymbolSelectionChanged(selectedSymbol: string): Promise<void> {
-    if (selectedSymbol !== DividendDialogComponent.CREATE_SYMBOL_OPTION) {
-      return;
+  filteredSymbols(): TrackedSymbol[] {
+    const query = this.form.controls.symbol.value.trim().toLowerCase();
+    if (!query) {
+      return this.symbols;
     }
 
+    return this.symbols.filter(sym => 
+      sym.symbol.toLowerCase().includes(query) || 
+      sym.fullName.toLowerCase().includes(query)
+    );
+  }
+
+  async openSymbolCreateOption(): Promise<void> {
     this.form.controls.symbol.setValue('');
     await this.openCreateSymbolDialog();
   }
@@ -124,7 +134,7 @@ export class DividendDialogComponent {
       this.dialogRef.close({
         symbol: value.symbol.trim().toUpperCase(),
         dividendTypeId,
-        date: new Date(`${value.date}T12:00:00`),
+        date: this.toNoonDate(value.date),
         amount: Number(value.amount),
         sharesHeld: Number(value.sharesHeld || 0),
         currency: this.accountCurrency,
@@ -136,8 +146,10 @@ export class DividendDialogComponent {
   }
 
   filteredDividendTypes(): DividendType[] {
-    const query = this.form.controls.dividendTypeName.value.trim().toLowerCase();
-    if (!query) {
+    const control = this.form.controls.dividendTypeName;
+    const query = control.value.trim().toLowerCase();
+
+    if (!query || control.pristine) {
       return this.dividendTypes;
     }
 
@@ -299,12 +311,9 @@ export class DividendDialogComponent {
     return [...types].sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  private toInputDate(rawDate: unknown): string {
+  private toNoonDate(rawDate: unknown): Date {
     const date = this.toDate(rawDate) ?? new Date();
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
   }
 
   private toDate(rawDate: unknown): Date | null {

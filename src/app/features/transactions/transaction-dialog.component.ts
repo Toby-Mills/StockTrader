@@ -2,6 +2,7 @@ import { Component, Inject } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,6 +23,10 @@ interface TransactionDialogData {
   transaction?: Transaction;
 }
 
+interface ImportCommentsDialogData {
+  comments: string[];
+}
+
 export interface TransactionDialogResult {
   symbol: string;
   type: TransactionType;
@@ -38,6 +43,7 @@ export interface TransactionDialogResult {
     imports: [
         FormsModule,
         ReactiveFormsModule,
+        MatDatepickerModule,
         MatDialogModule,
         MatFormFieldModule,
         MatIconModule,
@@ -92,7 +98,7 @@ export class TransactionDialogComponent {
         [Validators.required, Validators.maxLength(20)],
       ],
       type: [this.dialogData.transaction?.type ?? 'buy' as TransactionType, [Validators.required]],
-      date: [this.toInputDate(this.dialogData.transaction?.date), [Validators.required]],
+      date: [this.toDate(this.dialogData.transaction?.date) ?? new Date(), [Validators.required]],
       quantity: [this.dialogData.transaction?.quantity ?? 1, [Validators.required, Validators.min(0.000001)]],
       price: [this.dialogData.transaction?.price ?? 0, [Validators.required, Validators.min(0)]],
       fees: [this.dialogData.transaction?.fees ?? 0, [Validators.min(0)]],
@@ -149,7 +155,7 @@ export class TransactionDialogComponent {
     this.importWarnings = [];
 
     try {
-      const result = await this.transactionPdfImportService.importSingleTransaction(file, this.accountCurrency, this.selectedModel);
+      const result = await this.transactionPdfImportService.importSingleTransaction(file, this.accountCurrency, this.selectedModel, this.symbols);
       const parsed = result.parsedTransaction;
 
       if (!parsed) {
@@ -191,6 +197,19 @@ export class TransactionDialogComponent {
     });
   }
 
+  showImportCommentsDetails(): void {
+    if (!this.importWarnings.length) {
+      return;
+    }
+
+    this.dialog.open(ImportCommentsDialogComponent, {
+      width: '500px',
+      data: {
+        comments: this.importWarnings,
+      },
+    });
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -201,7 +220,7 @@ export class TransactionDialogComponent {
     this.dialogRef.close({
       symbol: value.symbol.trim().toUpperCase(),
       type: value.type,
-      date: new Date(`${value.date}T12:00:00`),
+      date: this.toNoonDate(value.date),
       quantity: Number(value.quantity),
       price: Number(value.price),
       fees: Number(value.fees || 0),
@@ -293,19 +312,16 @@ export class TransactionDialogComponent {
     return [...uniqueBySymbol.values()].sort((a, b) => a.symbol.localeCompare(b.symbol));
   }
 
-  private toInputDate(rawDate: unknown): string {
+  private toNoonDate(rawDate: unknown): Date {
     const date = this.toDate(rawDate) ?? new Date();
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
   }
 
   private applyImportedPrefill(prefill: TransactionFormPrefillPayload): void {
     const patch: Partial<{
       symbol: string;
       type: TransactionType;
-      date: string;
+      date: Date;
       quantity: number;
       price: number;
       fees: number;
@@ -336,7 +352,7 @@ export class TransactionDialogComponent {
     }
 
     if (prefill.transactionDate) {
-      patch.date = this.toInputDate(prefill.transactionDate);
+      patch.date = this.toDate(prefill.transactionDate) ?? new Date();
       this.importedFields.add('date');
     }
 
@@ -495,4 +511,38 @@ class ImportErrorDialogComponent {
   constructor(@Inject(MAT_DIALOG_DATA) readonly data: ImportErrorDialogData) {
     this.filteredDiagnostics = (data.diagnostics ?? []).filter(diag => !diag.startsWith('Error message:'));
   }
+}
+
+@Component({
+  standalone: true,
+  selector: 'app-import-comments-dialog',
+  imports: [MatDialogModule, MatButtonModule],
+  template: `
+    <h2 mat-dialog-title>Import Comments</h2>
+    <mat-dialog-content>
+      <ul class="comments-list">
+        @for (comment of data.comments; track comment) {
+          <li>{{ comment }}</li>
+        }
+      </ul>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Close</button>
+    </mat-dialog-actions>
+  `,
+  styles: [`
+    .comments-list {
+      margin: 0;
+      padding-left: 1.25rem;
+      font-size: 0.9rem;
+    }
+
+    .comments-list li {
+      margin-bottom: 0.5rem;
+      word-break: break-word;
+    }
+  `]
+})
+class ImportCommentsDialogComponent {
+  constructor(@Inject(MAT_DIALOG_DATA) readonly data: ImportCommentsDialogData) {}
 }

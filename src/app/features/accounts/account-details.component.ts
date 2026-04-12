@@ -22,14 +22,17 @@ import { DividendTypeService } from '../../core/services/dividend-type.service';
 import { PortfolioService } from '../../core/services/portfolio.service';
 import { SymbolCatalogService } from '../../core/services/symbol-catalog.service';
 import { TransactionService } from '../../core/services/transaction.service';
+import { sortByDateAndCreatedAt } from '../../core/utils/record-sort';
 import { CashEventDialogComponent, CashEventDialogResult } from './cash-event-dialog.component';
 import { AccountDeleteConfirmDialogComponent } from './account-delete-confirm-dialog.component';
 import { DividendDialogComponent, DividendDialogResult } from '../dividends/dividend-dialog.component';
+import { SymbolDialogComponent, SymbolDialogResult } from '../symbols/symbol-dialog.component';
 import { TransactionDialogComponent, TransactionDialogResult } from '../transactions/transaction-dialog.component';
 
 interface CashLedgerRow {
   id: string;
   date: unknown;
+  createdAt?: unknown;
   source: 'cash-event' | 'dividend' | 'transaction';
   sourceLabel: string;
   details: string;
@@ -128,6 +131,7 @@ export class AccountDetailsComponent {
       rows.push({
         id: `cash-event-${event.id}`,
         date: event.date,
+        createdAt: event.createdAt,
         source: 'cash-event',
         sourceLabel: this.cashEventLabel(event.type),
         details: event.type === 'deposit' ? 'Account funding' : 'Cash withdrawal',
@@ -142,6 +146,7 @@ export class AccountDetailsComponent {
       rows.push({
         id: `dividend-${dividend.id}`,
         date: dividend.date,
+        createdAt: dividend.createdAt,
         source: 'dividend',
         sourceLabel: 'Dividend',
         details: this.symbolLabel(dividend.symbol),
@@ -159,16 +164,17 @@ export class AccountDetailsComponent {
       rows.push({
         id: `transaction-${tx.id}`,
         date: tx.date,
+        createdAt: tx.createdAt,
         source: 'transaction',
         sourceLabel: tx.type === 'buy' ? 'Buy' : 'Sell',
         details: `${this.symbolLabel(tx.symbol)} (${tx.quantity})`,
         amount,
         currency: tx.currency,
-        notes: fees > 0 ? `Fees: ${this.formatMoney(fees, tx.currency)}` : undefined,
+        notes: fees > 0 ? `Fees: ${this.formatNumber(fees)}` : undefined,
       });
     }
 
-    return rows.sort((a, b) => this.toTimestamp(b.date) - this.toTimestamp(a.date));
+    return sortByDateAndCreatedAt(rows);
   });
 
   isSaving = false;
@@ -442,6 +448,20 @@ export class AccountDetailsComponent {
     }).format(amount);
   }
 
+  formatNumber(amount: number): string {
+    return new Intl.NumberFormat('en-GB', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
+
+  formatShareQuantity(amount: number): string {
+    return new Intl.NumberFormat('en-GB', {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    }).format(amount);
+  }
+
   cashAmountSigned(event: CashEvent): number {
     return event.type === 'deposit' ? event.amount : -event.amount;
   }
@@ -700,6 +720,82 @@ export class AccountDetailsComponent {
     await this.updateDividend(account.id, dividend.id, result);
   }
 
+  async openAddSymbolDialog(): Promise<void> {
+    const account = this.account();
+    if (!account) {
+      return;
+    }
+
+    const result = await firstValueFrom(
+      this.dialog
+        .open(SymbolDialogComponent, {
+          width: '520px',
+          data: {
+            accountCurrency: account.currency,
+          },
+        })
+        .afterClosed()
+    );
+
+    if (!result) {
+      return;
+    }
+
+    await this.createSymbol(account.id, result);
+  }
+
+  async openEditSymbolDialog(symbol: TrackedSymbol): Promise<void> {
+    const account = this.account();
+    if (!account) {
+      return;
+    }
+
+    const result = await firstValueFrom(
+      this.dialog
+        .open(SymbolDialogComponent, {
+          width: '520px',
+          data: {
+            accountCurrency: account.currency,
+            symbol,
+          },
+        })
+        .afterClosed()
+    );
+
+    if (!result) {
+      return;
+    }
+
+    await this.updateSymbol(account.id, symbol.id, result);
+  }
+
+  async deleteSymbol(symbol: TrackedSymbol): Promise<void> {
+    const account = this.account();
+    if (!account || this.isSaving) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Remove ${symbol.symbol} (${symbol.fullName}) from this account symbol list?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.isSaving = true;
+    this.feedbackMessage = '';
+
+    try {
+      await this.symbolCatalogService.deleteSymbol(account.id, symbol.id);
+      this.feedbackMessage = 'Symbol removed.';
+    } catch (error) {
+      this.feedbackMessage = this.errorMessage(error, 'Could not remove symbol');
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
   async deleteDividend(dividend: Dividend): Promise<void> {
     const account = this.account();
     if (!account || this.isSaving) {
@@ -834,6 +930,48 @@ export class AccountDetailsComponent {
       this.feedbackMessage = 'Dividend updated.';
     } catch (error) {
       this.feedbackMessage = this.errorMessage(error, 'Could not update dividend');
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  private async createSymbol(accountId: string, result: SymbolDialogResult): Promise<void> {
+    if (this.isSaving) {
+      return;
+    }
+
+    this.isSaving = true;
+    this.feedbackMessage = '';
+
+    try {
+      await this.symbolCatalogService.addSymbol(accountId, {
+        symbol: result.symbol,
+        fullName: result.fullName,
+      });
+      this.feedbackMessage = 'Symbol added.';
+    } catch (error) {
+      this.feedbackMessage = this.errorMessage(error, 'Could not add symbol');
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  private async updateSymbol(accountId: string, symbolId: string, result: SymbolDialogResult): Promise<void> {
+    if (this.isSaving) {
+      return;
+    }
+
+    this.isSaving = true;
+    this.feedbackMessage = '';
+
+    try {
+      await this.symbolCatalogService.updateSymbol(accountId, symbolId, {
+        symbol: result.symbol,
+        fullName: result.fullName,
+      });
+      this.feedbackMessage = 'Symbol updated.';
+    } catch (error) {
+      this.feedbackMessage = this.errorMessage(error, 'Could not update symbol');
     } finally {
       this.isSaving = false;
     }

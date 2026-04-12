@@ -47,6 +47,17 @@ export class DividendTypeService {
     return setDoc(newTypeRef, payload).then(() => newTypeRef.id);
   }
 
+  addDividendTypeWithId(accountId: string, id: string, type: Omit<DividendType, 'id' | 'accountId'>): Promise<void> {
+    const payload = stripUndefined({
+      ...type,
+      name: type.name.trim(),
+      description: type.description?.trim(),
+      accountId,
+    });
+
+    return setDoc(doc(this.firestore, 'accounts', accountId, 'dividend-types', id), payload);
+  }
+
   updateDividendType(accountId: string, id: string, changes: Partial<DividendType>): Promise<void> {
     this.requireAuth();
 

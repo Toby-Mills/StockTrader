@@ -4,16 +4,23 @@
   <form [formGroup]="form" class="div-form">
     <mat-form-field appearance="outline">
       <mat-label>Stock / Fund Symbol</mat-label>
-      <mat-select formControlName="symbol" (selectionChange)="onSymbolSelectionChanged($event.value)">
-        <mat-option value="__CREATE_NEW_SYMBOL__">+ Create new symbol...</mat-option>
-        @for (symbol of symbols; track symbol.id) {
+      <input
+        matInput
+        formControlName="symbol"
+        [matAutocomplete]="symbolAuto"
+        placeholder="Type or select a symbol" />
+      <mat-autocomplete #symbolAuto="matAutocomplete">
+        <mat-option (click)="openSymbolCreateOption()" [value]="'__CREATE_NEW_SYMBOL__'">
+          + Create new symbol...
+        </mat-option>
+        @for (symbol of filteredSymbols(); track symbol.id) {
           <mat-option [value]="symbol.symbol">
             {{ symbol.symbol }} - {{ symbol.fullName }}
           </mat-option>
         }
-      </mat-select>
+      </mat-autocomplete>
       @if (symbols.length === 0) {
-        <mat-hint>No symbols yet. Choose "Create new symbol...".</mat-hint>
+        <mat-hint>No symbols yet. Type a symbol or create a new one.</mat-hint>
       } @else if (symbolMessage) {
         <mat-hint>{{ symbolMessage }}</mat-hint>
       }
@@ -42,14 +49,16 @@
 
     <mat-form-field appearance="outline">
       <mat-label>Payment Date</mat-label>
-      <input matInput type="date" formControlName="date" />
+      <input matInput [matDatepicker]="dividendDatePicker" formControlName="date" />
+      <mat-datepicker-toggle matIconSuffix [for]="dividendDatePicker"></mat-datepicker-toggle>
+      <mat-datepicker #dividendDatePicker></mat-datepicker>
       <mat-error>Date is required.</mat-error>
     </mat-form-field>
 
     <mat-form-field appearance="outline">
       <mat-label>Dividend Amount ({{ accountCurrency }})</mat-label>
-      <input matInput type="number" min="0" step="0.01" formControlName="amount" />
-      <mat-error>Amount must be greater than zero.</mat-error>
+      <input matInput type="number" step="0.01" formControlName="amount" />
+      <mat-error>Amount is required.</mat-error>
     </mat-form-field>
 
     <mat-form-field appearance="outline">

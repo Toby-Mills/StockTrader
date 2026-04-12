@@ -86,11 +86,11 @@
                         <th>Date</th>
                         <th>Symbol</th>
                         <th>Type</th>
-                        <th>Shares</th>
-                        <th>Price</th>
-                        <th>Total Price</th>
-                        <th>Fees</th>
-                        <th>Total Cost</th>
+                        <th class="numeric-col">Shares</th>
+                        <th class="numeric-col">Price</th>
+                        <th class="numeric-col">Total Price</th>
+                        <th class="numeric-col">Fees</th>
+                        <th class="numeric-col">Total Cost</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -104,11 +104,11 @@
                               {{ transactionLabel(tx.type) }}
                             </span>
                           </td>
-                          <td>{{ tx.quantity }}</td>
-                          <td>{{ formatMoney(tx.price, tx.currency) }}</td>
-                          <td>{{ formatMoney(totalPrice(tx), tx.currency) }}</td>
-                          <td>{{ formatMoney(tx.fees ?? 0, tx.currency) }}</td>
-                          <td>{{ formatMoney(totalCost(tx), tx.currency) }}</td>
+                          <td class="numeric-col">{{ formatShareQuantity(tx.quantity) }}</td>
+                          <td class="numeric-col">{{ formatNumber(tx.price) }}</td>
+                          <td class="numeric-col">{{ formatNumber(totalPrice(tx)) }}</td>
+                          <td class="numeric-col">{{ formatNumber(tx.fees ?? 0) }}</td>
+                          <td class="numeric-col">{{ formatNumber(totalCost(tx)) }}</td>
                           <td class="actions-cell">
                             <button mat-button type="button" (click)="openEditTransactionDialog(tx)" [disabled]="isSaving">
                               Edit
@@ -156,8 +156,8 @@
                         <th>Date</th>
                         <th>Symbol</th>
                         <th>Type</th>
-                        <th>Amount</th>
-                        <th>Shares Held</th>
+                        <th class="numeric-col">Amount</th>
+                        <th class="numeric-col">Shares Held</th>
                         <th>Notes</th>
                         <th></th>
                       </tr>
@@ -168,8 +168,8 @@
                           <td>{{ formatDate(dividend.date) }}</td>
                           <td>{{ symbolLabel(dividend.symbol) }}</td>
                           <td>{{ dividendTypeLabel(dividend) }}</td>
-                          <td>{{ formatMoney(dividend.amount, dividend.currency) }}</td>
-                          <td>{{ dividend.sharesHeld ?? '-' }}</td>
+                          <td class="numeric-col">{{ formatNumber(dividend.amount) }}</td>
+                          <td class="numeric-col">{{ dividend.sharesHeld != null ? formatNumber(dividend.sharesHeld) : '-' }}</td>
                           <td>{{ dividend.notes || '-' }}</td>
                           <td class="actions-cell">
                             <button mat-button type="button" (click)="openEditDividendDialog(dividend)" [disabled]="isSaving">
@@ -177,6 +177,60 @@
                             </button>
                             <button mat-button type="button" (click)="deleteDividend(dividend)" [disabled]="isSaving">
                               Delete
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          </mat-tab>
+
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span class="tab-label">
+                <mat-icon>query_stats</mat-icon>
+                <span>Stocks/Funds</span>
+              </span>
+            </ng-template>
+            <div class="tab-content">
+              <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                (click)="openAddSymbolDialog()"
+                [disabled]="isSaving"
+                class="add-button"
+              >
+                <mat-icon>add</mat-icon>
+                Add Stock/Fund
+              </button>
+
+              @if (trackedSymbols().length === 0) {
+                <p class="empty-state">No symbols added yet for this account.</p>
+              } @else {
+                <div class="table-wrap">
+                  <table class="symbols-table">
+                    <thead>
+                      <tr>
+                        <th>Symbol</th>
+                        <th>Display Name</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (symbol of trackedSymbols(); track symbol.id) {
+                        <tr>
+                          <td>{{ symbol.symbol }}</td>
+                          <td>{{ symbol.fullName }}</td>
+                          <td class="actions-cell">
+                            <button mat-button type="button" (click)="openEditSymbolDialog(symbol)" [disabled]="isSaving">
+                              Edit
+                            </button>
+                            <button mat-button type="button" (click)="deleteSymbol(symbol)" [disabled]="isSaving">
+                              Remove
                             </button>
                           </td>
                         </tr>
@@ -218,7 +272,7 @@
                         <th>Date</th>
                         <th>Source</th>
                         <th>Details</th>
-                        <th>Amount</th>
+                        <th class="numeric-col">Amount</th>
                         <th>Notes</th>
                         <th></th>
                       </tr>
@@ -229,8 +283,8 @@
                           <td>{{ formatDate(row.date) }}</td>
                           <td>{{ row.sourceLabel }}</td>
                           <td>{{ row.details }}</td>
-                          <td [class.cash-out]="row.amount < 0">
-                            {{ formatMoney(row.amount, row.currency) }}
+                          <td class="numeric-col" [class.cash-out]="row.amount < 0">
+                            {{ formatNumber(row.amount) }}
                           </td>
                           <td>{{ row.notes || '-' }}</td>
                           <td class="actions-cell">

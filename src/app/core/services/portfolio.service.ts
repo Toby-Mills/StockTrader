@@ -8,6 +8,7 @@ import { Holding } from '../models/holding.model';
 import { Dividend } from '../models/dividend.model';
 import { FinancialCalculationsService } from './financial-calculations.service';
 import { CashEvent } from '../models/cash-event.model';
+import { compareByDateAndCreatedAt } from '../utils/record-sort';
 
 export interface PortfolioSnapshot {
   holdings: Holding[];
@@ -72,16 +73,9 @@ export class PortfolioService {
     const transactionsChronological = transactions
       .map((tx, originalIndex) => ({ tx, originalIndex }))
       .sort((a, b) => {
-        const dateDelta = this.toTimestamp(a.tx.date) - this.toTimestamp(b.tx.date);
-        if (dateDelta !== 0) {
-          return dateDelta;
-        }
-
-        const createdAtA = this.toTimestamp(a.tx.createdAt, Number.NaN);
-        const createdAtB = this.toTimestamp(b.tx.createdAt, Number.NaN);
-        const bothHaveCreatedAt = Number.isFinite(createdAtA) && Number.isFinite(createdAtB);
-        if (bothHaveCreatedAt && createdAtA !== createdAtB) {
-          return createdAtA - createdAtB;
+        const delta = compareByDateAndCreatedAt(a.tx, b.tx, 'asc');
+        if (delta !== 0) {
+          return delta;
         }
 
         // Fallback for legacy rows without createdAt: preserve source order.
@@ -153,7 +147,7 @@ export class PortfolioService {
       ...dividends.map((dividend, originalIndex) => ({
         source: 'dividend' as const,
         date: dividend.date,
-        createdAt: undefined,
+        createdAt: dividend.createdAt,
         originalIndex,
         dividend,
       })),
@@ -167,16 +161,9 @@ export class PortfolioService {
     ];
 
     events.sort((a, b) => {
-      const dateDelta = this.toTimestamp(a.date) - this.toTimestamp(b.date);
-      if (dateDelta !== 0) {
-        return dateDelta;
-      }
-
-      const createdAtA = this.toTimestamp(a.createdAt, Number.NaN);
-      const createdAtB = this.toTimestamp(b.createdAt, Number.NaN);
-      const bothHaveCreatedAt = Number.isFinite(createdAtA) && Number.isFinite(createdAtB);
-      if (bothHaveCreatedAt && createdAtA !== createdAtB) {
-        return createdAtA - createdAtB;
+      const delta = compareByDateAndCreatedAt(a, b, 'asc');
+      if (delta !== 0) {
+        return delta;
       }
 
       return a.originalIndex - b.originalIndex;
@@ -203,26 +190,5 @@ export class PortfolioService {
     }
 
     return cashBalance;
-  }
-
-  private toTimestamp(value: unknown, fallback = 0): number {
-    if (value instanceof Date) {
-      return Number.isNaN(value.getTime()) ? fallback : value.getTime();
-    }
-
-    if (typeof value === 'object' && value !== null && 'toDate' in value) {
-      const candidate = (value as { toDate?: () => unknown }).toDate?.();
-      if (candidate instanceof Date && !Number.isNaN(candidate.getTime())) {
-        return candidate.getTime();
-      }
-      return fallback;
-    }
-
-    if (typeof value === 'string' || typeof value === 'number') {
-      const parsed = new Date(value);
-      return Number.isNaN(parsed.getTime()) ? fallback : parsed.getTime();
-    }
-
-    return fallback;
   }
 }

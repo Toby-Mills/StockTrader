@@ -52,11 +52,10 @@
       }
 
       @if (importWarnings.length) {
-        <ul class="import-warnings">
-          @for (warning of importWarnings; track warning) {
-            <li>{{ warning }}</li>
-          }
-        </ul>
+        <button type="button" (click)="showImportCommentsDetails()" class="comments-indicator">
+          <mat-icon>comment</mat-icon>
+          <span>Import comments available ({{ importWarnings.length }})</span>
+        </button>
       }
     }
   </div>
@@ -91,7 +90,9 @@
 
     <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('date')">
       <mat-label>Date</mat-label>
-      <input matInput type="date" formControlName="date" />
+      <input matInput [matDatepicker]="transactionDatePicker" formControlName="date" />
+      <mat-datepicker-toggle matIconSuffix [for]="transactionDatePicker"></mat-datepicker-toggle>
+      <mat-datepicker #transactionDatePicker></mat-datepicker>
       <mat-error>Date is required.</mat-error>
     </mat-form-field>
 
