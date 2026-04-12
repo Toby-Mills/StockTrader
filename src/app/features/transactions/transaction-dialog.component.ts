@@ -116,9 +116,14 @@ export class TransactionDialogComponent {
     return Number(value.quantity) * Number(value.price);
   }
 
+  get totalAmountLabel(): string {
+    return this.form.controls.type.value === 'sell' ? 'Net Proceeds' : 'Overall Total Cost';
+  }
+
   get totalCost(): number {
     const value = this.form.getRawValue();
-    return this.totalPrice + Number(value.fees || 0);
+    const fees = Number(value.fees || 0);
+    return value.type === 'sell' ? this.totalPrice - fees : this.totalPrice + fees;
   }
 
   async onSymbolSelectionChanged(selectedSymbol: string): Promise<void> {

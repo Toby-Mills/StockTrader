@@ -200,7 +200,8 @@ export class TransactionsComponent {
   }
 
   totalCost(tx: Transaction): number {
-    return this.totalPrice(tx) + (tx.fees ?? 0);
+    const fees = tx.fees ?? 0;
+    return tx.type === 'sell' ? this.totalPrice(tx) - fees : this.totalPrice(tx) + fees;
   }
 
   formatDate(rawDate: unknown): string {
