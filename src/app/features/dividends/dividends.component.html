@@ -72,7 +72,14 @@
                   <td>{{ formatDate(dividend.date) }}</td>
                   <td>{{ symbolLabel(dividend.symbol) }}</td>
                   <td>{{ dividendTypeLabel(dividend) }}</td>
-                  <td>{{ formatMoney(dividend.amount, dividend.currency) }}</td>
+                  <td [class.cash-out]="dividend.amount < 0">
+                    {{ formatMoney(dividend.amount, dividend.currency) }}
+                    @if (dividend.perShare != null) {
+                      <div class="secondary-value" [class.cash-out]="dividend.perShare < 0">
+                        Per share: {{ formatMoney(dividend.perShare, dividend.currency) }}
+                      </div>
+                    }
+                  </td>
                   <td>{{ dividend.sharesHeld ?? '-' }}</td>
                   <td>{{ dividend.notes || '-' }}</td>
                   <td class="actions-cell">

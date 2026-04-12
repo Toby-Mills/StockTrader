@@ -43,6 +43,19 @@ mat-card-content {
   white-space: nowrap;
 }
 
+.cash-out {
+  color: #8b1d1d;
+}
+
+.secondary-value {
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.secondary-value.cash-out {
+  color: #8b1d1d;
+}
+
 .actions-cell {
   text-align: right;
 }

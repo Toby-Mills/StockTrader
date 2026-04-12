@@ -29,6 +29,7 @@ export interface DividendDialogResult {
   dividendTypeId: string;
   date: Date;
   amount: number;
+  perShare?: number;
   sharesHeld?: number;
   currency: string;
   notes?: string;
@@ -93,6 +94,7 @@ export class DividendDialogComponent {
       ],
       date: [this.toDate(this.dialogData.dividend?.date) ?? new Date(), [Validators.required]],
       amount: [this.dialogData.dividend?.amount ?? 0, [Validators.required]],
+      perShare: [this.dialogData.dividend?.perShare ?? null],
       sharesHeld: [this.dialogData.dividend?.sharesHeld ?? 0, [Validators.min(0)]],
       notes: [this.dialogData.dividend?.notes ?? '', [Validators.maxLength(500)]],
     });
@@ -136,6 +138,7 @@ export class DividendDialogComponent {
         dividendTypeId,
         date: this.toNoonDate(value.date),
         amount: Number(value.amount),
+        perShare: value.perShare == null ? undefined : Number(value.perShare),
         sharesHeld: Number(value.sharesHeld || 0),
         currency: this.accountCurrency,
         notes: value.notes?.trim() || undefined,

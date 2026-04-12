@@ -7,6 +7,7 @@ export interface Dividend {
   dividendTypeId?: string;
   date: Date;
   amount: number;
+  perShare?: number;
   currency: string;
   sharesHeld?: number;
   notes?: string;
