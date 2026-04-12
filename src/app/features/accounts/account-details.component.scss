@@ -111,6 +111,76 @@ mat-card-content {
   margin: 0;
 }
 
+.balance-sheet {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(8, 55, 88, 0.04), rgba(8, 55, 88, 0.01));
+}
+
+.balance-sheet-header {
+  padding: 0.85rem 1rem 0.7rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.balance-sheet-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.balance-sheet-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.balance-sheet-table {
+  display: grid;
+}
+
+.balance-sheet-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  align-items: center;
+}
+
+.balance-sheet-row p {
+  margin: 0;
+}
+
+.balance-sheet-row p:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.balance-sheet-row.section {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.balance-sheet-row.section p {
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.62);
+  font-weight: 600;
+}
+
+.balance-sheet-row.total {
+  border-top: 2px solid rgba(0, 0, 0, 0.16);
+  border-bottom: 0;
+  background: rgba(17, 109, 58, 0.08);
+}
+
+.balance-sheet-row.total p {
+  font-weight: 700;
+}
+
 .tab-content {
   padding: 1.5rem 0;
   display: flex;
@@ -214,6 +284,15 @@ mat-card-content {
 @media (max-width: 980px) {
   .toolbar-row {
     grid-template-columns: 1fr;
+  }
+
+  .balance-sheet-row {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+  }
+
+  .balance-sheet-row p:last-child {
+    text-align: left;
   }
 
   .cash-summary {

@@ -108,6 +108,42 @@ export class AccountDetailsComponent {
     return list.filter(div => div.symbol.toUpperCase() === symbol);
   });
 
+  readonly filteredSymbolSummary = computed(() => {
+    const symbol = this.selectedSymbol();
+    if (symbol === 'ALL') {
+      return null;
+    }
+
+    const purchaseValue = this.filteredTransactions()
+      .filter(tx => tx.type === 'buy')
+      .reduce((sum, tx) => sum + this.totalCost(tx), 0);
+
+    const saleValue = this.filteredTransactions()
+      .filter(tx => tx.type === 'sell')
+      .reduce((sum, tx) => sum + this.totalCost(tx), 0);
+
+    const totalDividends = this.filteredDividends()
+      .reduce((sum, div) => sum + div.amount, 0);
+
+    const currentPosition = this.filteredTransactions().reduce((position, tx) => {
+      if (tx.type === 'buy') {
+        return position + tx.quantity;
+      }
+      return position - tx.quantity;
+    }, 0);
+
+    const netCash = saleValue + totalDividends - purchaseValue;
+
+    return {
+      symbol,
+      purchaseValue,
+      saleValue,
+      totalDividends,
+      currentPosition,
+      netCash,
+    };
+  });
+
   readonly symbolNameByCode = computed(() => {
     const lookup = new Map<string, string>();
     for (const symbol of this.trackedSymbols()) {
@@ -126,23 +162,26 @@ export class AccountDetailsComponent {
 
   readonly cashLedgerRows = computed(() => {
     const rows: CashLedgerRow[] = [];
+    const symbol = this.selectedSymbol();
 
-    for (const event of this.cashEvents()) {
-      rows.push({
-        id: `cash-event-${event.id}`,
-        date: event.date,
-        createdAt: event.createdAt,
-        source: 'cash-event',
-        sourceLabel: this.cashEventLabel(event.type),
-        details: event.type === 'deposit' ? 'Account funding' : 'Cash withdrawal',
-        amount: this.cashAmountSigned(event),
-        currency: event.currency,
-        notes: event.notes,
-        cashEvent: event,
-      });
+    if (symbol === 'ALL') {
+      for (const event of this.cashEvents()) {
+        rows.push({
+          id: `cash-event-${event.id}`,
+          date: event.date,
+          createdAt: event.createdAt,
+          source: 'cash-event',
+          sourceLabel: this.cashEventLabel(event.type),
+          details: event.type === 'deposit' ? 'Account funding' : 'Cash withdrawal',
+          amount: this.cashAmountSigned(event),
+          currency: event.currency,
+          notes: event.notes,
+          cashEvent: event,
+        });
+      }
     }
 
-    for (const dividend of this.dividends()) {
+    for (const dividend of this.filteredDividends()) {
       rows.push({
         id: `dividend-${dividend.id}`,
         date: dividend.date,
@@ -156,7 +195,7 @@ export class AccountDetailsComponent {
       });
     }
 
-    for (const tx of this.transactions()) {
+    for (const tx of this.filteredTransactions()) {
       const gross = tx.quantity * tx.price;
       const fees = tx.fees ?? 0;
       const amount = tx.type === 'buy' ? -(gross + fees) : gross - fees;

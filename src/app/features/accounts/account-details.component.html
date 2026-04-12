@@ -53,6 +53,59 @@
           </div>
         </div>
 
+        @if (filteredSymbolSummary(); as summary) {
+          <section class="balance-sheet" aria-label="Symbol balance sheet summary">
+            <header class="balance-sheet-header">
+              <p class="balance-sheet-kicker">Symbol Balance Sheet</p>
+              <h2>{{ symbolLabel(summary.symbol) }}</h2>
+            </header>
+
+            <div class="balance-sheet-table" role="table" aria-label="Balance sheet values">
+              <div class="balance-sheet-row section" role="row">
+                <p role="cell">Cash Outflows</p>
+                <p role="cell">Amount</p>
+              </div>
+              <div class="balance-sheet-row" role="row">
+                <p role="cell">Total Purchase Value</p>
+                <p role="cell" class="cash-out">{{ formatMoney(summary.purchaseValue, acc.currency) }}</p>
+              </div>
+
+              <div class="balance-sheet-row section" role="row">
+                <p role="cell">Cash Inflows</p>
+                <p role="cell">Amount</p>
+              </div>
+              <div class="balance-sheet-row" role="row">
+                <p role="cell">Total Sale Value</p>
+                <p role="cell">{{ formatMoney(summary.saleValue, acc.currency) }}</p>
+              </div>
+              <div class="balance-sheet-row" role="row">
+                <p role="cell">Total Dividends</p>
+                <p role="cell" [class.cash-out]="summary.totalDividends < 0">
+                  {{ formatMoney(summary.totalDividends, acc.currency) }}
+                </p>
+              </div>
+
+              <div class="balance-sheet-row section" role="row">
+                <p role="cell">Position</p>
+                <p role="cell">Units</p>
+              </div>
+              <div class="balance-sheet-row" role="row">
+                <p role="cell">Current Position</p>
+                <p role="cell" [class.cash-out]="summary.currentPosition < 0">
+                  {{ formatShareQuantity(summary.currentPosition) }}
+                </p>
+              </div>
+
+              <div class="balance-sheet-row total" role="row">
+                <p role="cell">Net Cash Value</p>
+                <p role="cell" [class.cash-out]="summary.netCash < 0">
+                  {{ formatMoney(summary.netCash, acc.currency) }}
+                </p>
+              </div>
+            </div>
+          </section>
+        }
+
         <mat-tab-group>
           <mat-tab>
             <ng-template mat-tab-label>
