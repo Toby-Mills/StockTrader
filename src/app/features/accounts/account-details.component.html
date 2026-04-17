@@ -115,17 +115,38 @@
               </span>
             </ng-template>
             <div class="tab-content">
-              <button
-                mat-raised-button
-                color="primary"
-                type="button"
-                (click)="openAddTransactionDialog()"
-                [disabled]="isSaving"
-                class="add-button"
-              >
-                <mat-icon>swap_horiz</mat-icon>
-                Add Transaction
-              </button>
+              <div class="tab-actions">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  type="button"
+                  (click)="openAddTransactionDialog()"
+                  [disabled]="isSaving"
+                  class="add-button"
+                >
+                  <mat-icon>swap_horiz</mat-icon>
+                  Add Transaction
+                </button>
+
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="openCsvImportPicker(csvImportInput)"
+                  [disabled]="isSaving"
+                  class="add-button"
+                >
+                  <mat-icon>upload_file</mat-icon>
+                  Import CSV
+                </button>
+
+                <input
+                  #csvImportInput
+                  type="file"
+                  accept=".csv,text/csv"
+                  class="hidden-file-input"
+                  (change)="onCsvFileSelected($event)"
+                />
+              </div>
 
               @if (filteredTransactions().length === 0) {
                 <p class="empty-state">

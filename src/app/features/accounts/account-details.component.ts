@@ -42,6 +42,20 @@ interface CashLedgerRow {
   cashEvent?: CashEvent;
 }
 
+type CsvTransactionKind = 'Purchase' | 'Sell' | 'Sale' | 'Dividend' | 'Foreign Dividends' | 'REIT Distribution';
+
+interface ParsedCsvRow {
+  rowNumber: number;
+  date: Date;
+  ticker: string;
+  name: string;
+  transaction: CsvTransactionKind;
+  cost?: number;
+  shares?: number;
+  pricePerShare?: number;
+  fees?: number;
+}
+
 @Component({
   selector: 'app-account-details',
   standalone: true,
@@ -59,6 +73,21 @@ interface CashLedgerRow {
   styleUrl: './account-details.component.scss',
 })
 export class AccountDetailsComponent {
+  private static readonly CSV_DIVIDEND_TYPES: readonly CsvTransactionKind[] = [
+    'Dividend',
+    'Foreign Dividends',
+    'REIT Distribution',
+  ];
+
+  private static readonly CSV_TRANSACTION_TYPES: readonly CsvTransactionKind[] = [
+    'Purchase',
+    'Sell',
+    'Sale',
+    ...AccountDetailsComponent.CSV_DIVIDEND_TYPES,
+  ];
+
+  private static readonly CSV_HEADER_LINES = 2;
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly accountService = inject(AccountService);
@@ -533,6 +562,30 @@ export class AccountDetailsComponent {
     await this.createTransaction(account.id, result);
   }
 
+  openCsvImportPicker(fileInput: HTMLInputElement): void {
+    if (this.isSaving) {
+      return;
+    }
+
+    this.feedbackMessage = '';
+    fileInput.click();
+  }
+
+  async onCsvFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      await this.importCsvFile(file);
+    } finally {
+      input.value = '';
+    }
+  }
+
   async openEditTransactionDialog(tx: Transaction): Promise<void> {
     const account = this.account();
     if (!account) {
@@ -887,6 +940,442 @@ export class AccountDetailsComponent {
     } finally {
       this.isSaving = false;
     }
+  }
+
+  private async importCsvFile(file: File): Promise<void> {
+    const account = this.account();
+    if (!account || this.isSaving) {
+      return;
+    }
+
+    const isCsv = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+    if (!isCsv) {
+      this.feedbackMessage = 'Please select a CSV file.';
+      return;
+    }
+
+    this.isSaving = true;
+    this.feedbackMessage = '';
+
+    try {
+      const content = await this.readTextFile(file);
+      const rows = this.parseImportCsv(content);
+
+      if (rows.length === 0) {
+        this.feedbackMessage = 'No supported transaction/dividend rows found in the CSV.';
+        return;
+      }
+
+      const confirmImport = window.confirm(
+        `Import ${rows.length} record(s) into ${account.name}? This will add new transactions/dividends.`
+      );
+
+      if (!confirmImport) {
+        this.feedbackMessage = 'CSV import cancelled.';
+        return;
+      }
+
+      const dividendTypeIdByName = await this.ensureCsvDividendTypes(account.id);
+      const existingSymbols = new Set(this.trackedSymbols().map(symbol => symbol.symbol.trim().toUpperCase()));
+      const symbolsToCreate = new Map<string, string>();
+      const transactionKeys = new Set(
+        this.transactions().map(tx => this.buildTransactionDuplicateKey(
+          tx.symbol,
+          tx.date,
+          tx.quantity,
+          tx.price,
+          tx.fees ?? 0,
+        ))
+      );
+      const dividendKeys = new Set(
+        this.dividends().map(dividend => this.buildDividendDuplicateKey(
+          dividend.symbol,
+          dividend.date,
+          dividend.amount,
+          dividend.sharesHeld,
+        ))
+      );
+
+      let importedTransactions = 0;
+      let importedDividends = 0;
+      let skippedRows = 0;
+      let duplicateRows = 0;
+      let failedRows = 0;
+
+      for (const row of rows) {
+        const symbol = row.ticker.trim().toUpperCase();
+        if (!symbol) {
+          skippedRows += 1;
+          continue;
+        }
+
+        if (!existingSymbols.has(symbol)) {
+          symbolsToCreate.set(symbol, row.name || symbol);
+          existingSymbols.add(symbol);
+        }
+
+        if (row.transaction === 'Purchase' || row.transaction === 'Sell' || row.transaction === 'Sale') {
+          if (row.shares == null || row.pricePerShare == null) {
+            skippedRows += 1;
+            continue;
+          }
+
+          const transactionKey = this.buildTransactionDuplicateKey(
+            symbol,
+            row.date,
+            row.shares,
+            row.pricePerShare,
+            row.fees ?? 0,
+          );
+
+          if (transactionKeys.has(transactionKey)) {
+            duplicateRows += 1;
+            skippedRows += 1;
+            continue;
+          }
+
+          try {
+            await this.transactionService.addTransaction(account.id, {
+              symbol,
+              type: row.transaction === 'Purchase' ? 'buy' : 'sell',
+              date: row.date,
+              quantity: row.shares,
+              price: row.pricePerShare,
+              fees: row.fees ?? 0,
+              currency: account.currency,
+              notes: `Imported from CSV row ${row.rowNumber}.`,
+            });
+          } catch (error) {
+            if (this.isAlreadyExistsError(error)) {
+              duplicateRows += 1;
+              skippedRows += 1;
+              continue;
+            }
+
+            failedRows += 1;
+            skippedRows += 1;
+            continue;
+          }
+
+          transactionKeys.add(transactionKey);
+          importedTransactions += 1;
+          continue;
+        }
+
+        if (row.pricePerShare == null) {
+          skippedRows += 1;
+          continue;
+        }
+
+        const dividendKey = this.buildDividendDuplicateKey(
+          symbol,
+          row.date,
+          row.pricePerShare,
+          row.shares,
+        );
+
+        if (dividendKeys.has(dividendKey)) {
+          duplicateRows += 1;
+          skippedRows += 1;
+          continue;
+        }
+
+        const dividendTypeId = dividendTypeIdByName.get(row.transaction);
+        try {
+          await this.dividendService.addDividend(account.id, {
+            symbol,
+            dividendTypeId,
+            date: row.date,
+            amount: row.pricePerShare,
+            sharesHeld: row.shares,
+            currency: account.currency,
+            notes: `Imported from CSV row ${row.rowNumber}.`,
+          });
+        } catch (error) {
+          if (this.isAlreadyExistsError(error)) {
+            duplicateRows += 1;
+            skippedRows += 1;
+            continue;
+          }
+
+          failedRows += 1;
+          skippedRows += 1;
+          continue;
+        }
+
+        dividendKeys.add(dividendKey);
+        importedDividends += 1;
+      }
+
+      for (const [symbol, fullName] of symbolsToCreate.entries()) {
+        await this.symbolCatalogService.addSymbol(account.id, {
+          symbol,
+          fullName,
+        });
+      }
+
+      this.feedbackMessage =
+        `CSV import complete. Added ${importedTransactions} transaction(s), ` +
+        `${importedDividends} dividend(s), ${symbolsToCreate.size} new symbol(s)` +
+        `${skippedRows > 0 ? `, skipped ${skippedRows} row(s)` : ''}` +
+        `${duplicateRows > 0 ? ` (${duplicateRows} duplicate)` : ''}${duplicateRows > 1 ? 's' : ''}` +
+        `${failedRows > 0 ? `, ${failedRows} failed row(s)` : ''}.`;
+    } catch (error) {
+      this.feedbackMessage = this.errorMessage(error, 'Could not import CSV');
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  private parseImportCsv(content: string): ParsedCsvRow[] {
+    const lines = content
+      .replace(/^\uFEFF/, '')
+      .split(/\r?\n/)
+      .filter(line => line.trim().length > 0);
+
+    if (lines.length <= AccountDetailsComponent.CSV_HEADER_LINES) {
+      return [];
+    }
+
+    const dataLines = lines.slice(AccountDetailsComponent.CSV_HEADER_LINES);
+    const parsedRows: ParsedCsvRow[] = [];
+
+    for (let index = 0; index < dataLines.length; index += 1) {
+      const line = dataLines[index];
+      const columns = this.parseCsvLine(line);
+
+      const transactionRaw = (columns[3] ?? '').trim();
+      if (!AccountDetailsComponent.CSV_TRANSACTION_TYPES.includes(transactionRaw as CsvTransactionKind)) {
+        continue;
+      }
+
+      const date = this.parseCsvDate(columns[0] ?? '');
+      const ticker = (columns[1] ?? '').trim();
+      const name = (columns[2] ?? '').trim();
+
+      if (!date) {
+        continue;
+      }
+
+      parsedRows.push({
+        rowNumber: AccountDetailsComponent.CSV_HEADER_LINES + index + 1,
+        date,
+        ticker,
+        name,
+        transaction: transactionRaw as CsvTransactionKind,
+        cost: this.parseCsvNumber(columns[4]),
+        shares: this.parseCsvNumber(columns[5]),
+        pricePerShare: this.parseCsvNumber(columns[6]),
+        fees: this.parseCsvNumber(columns[7]),
+      });
+    }
+
+    return parsedRows;
+  }
+
+  private parseCsvLine(line: string): string[] {
+    const cells: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let index = 0; index < line.length; index += 1) {
+      const char = line[index];
+
+      if (char === '"') {
+        const escapedQuote = inQuotes && line[index + 1] === '"';
+        if (escapedQuote) {
+          current += '"';
+          index += 1;
+          continue;
+        }
+
+        inQuotes = !inQuotes;
+        continue;
+      }
+
+      if (char === ',' && !inQuotes) {
+        cells.push(current.trim());
+        current = '';
+        continue;
+      }
+
+      current += char;
+    }
+
+    cells.push(current.trim());
+    return cells;
+  }
+
+  private parseCsvNumber(rawValue?: string): number | undefined {
+    if (!rawValue) {
+      return undefined;
+    }
+
+    const normalized = rawValue.replace(/,/g, '').trim();
+    if (!normalized) {
+      return undefined;
+    }
+
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  private parseCsvDate(rawValue: string): Date | null {
+    const value = rawValue.trim();
+    if (!value) {
+      return null;
+    }
+
+    const direct = new Date(value);
+    if (!Number.isNaN(direct.getTime())) {
+      return direct;
+    }
+
+    const normalized = value.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+    const match = normalized.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+    if (!match) {
+      return null;
+    }
+
+    const day = Number.parseInt(match[1], 10);
+    const monthKey = match[2].slice(0, 3).toLowerCase();
+    const year = Number.parseInt(match[3], 10);
+
+    const monthIndexMap: Record<string, number> = {
+      jan: 0,
+      feb: 1,
+      mar: 2,
+      apr: 3,
+      may: 4,
+      jun: 5,
+      jul: 6,
+      aug: 7,
+      sep: 8,
+      oct: 9,
+      nov: 10,
+      dec: 11,
+    };
+
+    const monthIndex = monthIndexMap[monthKey];
+    if (monthIndex == null) {
+      return null;
+    }
+
+    const parsed = new Date(year, monthIndex, day);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private buildTransactionDuplicateKey(
+    symbol: string,
+    dateValue: unknown,
+    quantity: number,
+    price: number,
+    fees: number,
+  ): string {
+    return [
+      symbol.trim().toUpperCase(),
+      this.toDateKey(dateValue),
+      this.toNumberKey(quantity),
+      this.toNumberKey(price),
+      this.toNumberKey(fees),
+    ].join('|');
+  }
+
+  private buildDividendDuplicateKey(
+    symbol: string,
+    dateValue: unknown,
+    amount: number,
+    sharesHeld?: number,
+  ): string {
+    return [
+      symbol.trim().toUpperCase(),
+      this.toDateKey(dateValue),
+      this.toNumberKey(amount),
+      this.toOptionalNumberKey(sharesHeld),
+    ].join('|');
+  }
+
+  private toDateKey(value: unknown): string {
+    const date = this.toDate(value);
+    if (!date) {
+      return 'invalid-date';
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private toNumberKey(value: number): string {
+    return value.toFixed(6);
+  }
+
+  private toOptionalNumberKey(value?: number): string {
+    if (value == null) {
+      return '';
+    }
+
+    return this.toNumberKey(value);
+  }
+
+  private isAlreadyExistsError(error: unknown): boolean {
+    if (!error) {
+      return false;
+    }
+
+    const code = (error as { code?: string }).code;
+    if (typeof code === 'string' && code.toLowerCase().includes('already-exists')) {
+      return true;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    return message.toLowerCase().includes('already exists');
+  }
+
+  private async ensureCsvDividendTypes(accountId: string): Promise<Map<string, string>> {
+    const byName = new Map<string, string>();
+
+    for (const dividendType of this.dividendTypes()) {
+      byName.set(dividendType.name.trim().toLowerCase(), dividendType.id);
+    }
+
+    const result = new Map<string, string>();
+
+    for (const typeName of AccountDetailsComponent.CSV_DIVIDEND_TYPES) {
+      const existingId = byName.get(typeName.toLowerCase());
+      if (existingId) {
+        result.set(typeName, existingId);
+        continue;
+      }
+
+      const createdId = await this.dividendTypeService.addDividendType(accountId, {
+        name: typeName,
+        description: 'Created automatically during CSV import.',
+      });
+
+      byName.set(typeName.toLowerCase(), createdId);
+      result.set(typeName, createdId);
+    }
+
+    return result;
+  }
+
+  private readTextFile(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const result = typeof reader.result === 'string' ? reader.result : '';
+        resolve(result);
+      };
+
+      reader.onerror = () => {
+        reject(reader.error ?? new Error('Could not read selected file.'));
+      };
+
+      reader.readAsText(file);
+    });
   }
 
   private async updateTransaction(

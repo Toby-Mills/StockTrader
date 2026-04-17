@@ -204,6 +204,17 @@ mat-card-content {
   align-self: flex-start;
 }
 
+.tab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
