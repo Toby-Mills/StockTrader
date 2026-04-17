@@ -70,7 +70,7 @@ export class TransactionDialogComponent {
     { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
     { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
   ];
-  selectedModel = 'gemini-2.5-flash-lite';
+  selectedModel = 'gemini-2.5-flash';
   symbolMessage = '';
   isCreatingSymbol = false;
   isImportingPdf = false;
