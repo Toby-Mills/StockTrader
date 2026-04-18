@@ -76,29 +76,21 @@
               @for (tx of filteredTransactions(); track tx.id) {
                 <tr>
                   <td>{{ formatDate(tx.date) }}</td>
+                  <td>{{ displaySymbolForSelection(tx, selectedSymbol()) }}</td>
                   <td>
-                    @if (tx.type === 'swap') {
-                      {{ tx.symbol }} → {{ tx.toSymbol }}
-                    } @else {
-                      {{ tx.symbol }}
-                    }
-                  </td>
-                  <td>
-                    <span class="tx-type" [class.sell]="tx.type === 'sell'" [class.swap]="tx.type === 'swap'">
-                      {{ transactionLabel(tx.type) }}
+                    <span
+                      class="tx-type"
+                      [class.sell]="isTransactionOutflowForSelection(tx, selectedSymbol())"
+                      [class.swap]="tx.type === 'swap' && selectedSymbol() === 'ALL'"
+                    >
+                      {{ transactionLabelForSelection(tx, selectedSymbol()) }}
                     </span>
                   </td>
-                  <td>
-                    @if (tx.type === 'swap') {
-                      {{ tx.quantity }} → {{ tx.toQuantity }}
-                    } @else {
-                      {{ tx.quantity }}
-                    }
-                  </td>
-                  <td>{{ tx.type === 'swap' ? '—' : formatMoney(tx.price, tx.currency) }}</td>
-                  <td>{{ tx.type === 'swap' ? '—' : formatMoney(totalPrice(tx), tx.currency) }}</td>
+                  <td>{{ displayQuantityForSelection(tx, selectedSymbol()) }}</td>
+                  <td>{{ displayPriceForSelection(tx) == null ? '-' : formatMoney(displayPriceForSelection(tx) ?? 0, tx.currency) }}</td>
+                  <td>{{ displayTotalPriceForSelection(tx) == null ? '-' : formatMoney(displayTotalPriceForSelection(tx) ?? 0, tx.currency) }}</td>
                   <td>{{ formatMoney(tx.fees ?? 0, tx.currency) }}</td>
-                  <td>{{ tx.type === 'swap' ? formatMoney(tx.fees ?? 0, tx.currency) : formatMoney(totalCost(tx), tx.currency) }}</td>
+                  <td>{{ formatMoney(displayTotalCostForSelection(tx, selectedSymbol()), tx.currency) }}</td>
                   <td class="actions-cell">
                     <button mat-button type="button" (click)="openEditDialog(tx)" [disabled]="isSaving">
                       Edit

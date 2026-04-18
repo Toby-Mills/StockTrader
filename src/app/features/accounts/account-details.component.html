@@ -69,6 +69,10 @@
                 <p role="cell">Total Purchase Value</p>
                 <p role="cell" class="cash-out">{{ formatMoney(summary.purchaseValue, acc.currency) }}</p>
               </div>
+              <div class="balance-sheet-row" role="row">
+                <p role="cell">Swap Fees</p>
+                <p role="cell" class="cash-out">{{ formatMoney(summary.swapFeeOutflow, acc.currency) }}</p>
+              </div>
 
               <div class="balance-sheet-row section" role="row">
                 <p role="cell">Cash Inflows</p>
@@ -172,17 +176,17 @@
                       @for (tx of filteredTransactions(); track tx.id) {
                         <tr>
                           <td>{{ formatDate(tx.date) }}</td>
-                          <td>{{ tx.symbol }}</td>
+                          <td>{{ displaySymbolForSelection(tx, selectedSymbol()) }}</td>
                           <td>
-                            <span class="tx-type" [class.sell]="tx.type === 'sell'">
-                              {{ transactionLabel(tx.type) }}
+                            <span class="tx-type" [class.sell]="isTransactionOutflowForSelection(tx, selectedSymbol())">
+                              {{ transactionLabelForSelection(tx, selectedSymbol()) }}
                             </span>
                           </td>
-                          <td class="numeric-col">{{ formatShareQuantity(tx.quantity) }}</td>
-                          <td class="numeric-col">{{ formatNumber(tx.price) }}</td>
-                          <td class="numeric-col">{{ formatNumber(totalPrice(tx)) }}</td>
+                          <td class="numeric-col">{{ displayQuantityForSelection(tx, selectedSymbol()) }}</td>
+                          <td class="numeric-col">{{ displayPriceForSelection(tx) == null ? '-' : formatNumber(displayPriceForSelection(tx) ?? 0) }}</td>
+                          <td class="numeric-col">{{ displayTotalPriceForSelection(tx) == null ? '-' : formatNumber(displayTotalPriceForSelection(tx) ?? 0) }}</td>
                           <td class="numeric-col">{{ formatNumber(tx.fees ?? 0) }}</td>
-                          <td class="numeric-col">{{ formatNumber(totalCost(tx)) }}</td>
+                          <td class="numeric-col">{{ formatNumber(displayTotalCostForSelection(tx, selectedSymbol())) }}</td>
                           <td class="actions-cell">
                             <button mat-button type="button" (click)="openEditTransactionDialog(tx)" [disabled]="isSaving">
                               Edit

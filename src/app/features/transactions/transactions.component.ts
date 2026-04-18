@@ -50,13 +50,14 @@ export class TransactionsComponent {
   readonly trackedSymbols = signal<TrackedSymbol[]>([]);
 
   readonly symbols = computed(() =>
-    [...new Set(
-      this.transactions().flatMap(tx => {
-        const fromSymbol = tx.symbol.toUpperCase();
-        const toSymbol = tx.toSymbol?.toUpperCase();
+    [...new Set([
+      ...this.trackedSymbols().map(symbol => this.normalizeSymbol(symbol.symbol)),
+      ...this.transactions().flatMap(tx => {
+        const fromSymbol = this.normalizeSymbol(tx.symbol);
+        const toSymbol = tx.type === 'swap' ? this.normalizeSymbol(tx.toSymbol) : null;
         return toSymbol ? [fromSymbol, toSymbol] : [fromSymbol];
-      })
-    )].sort((a, b) => a.localeCompare(b))
+      }),
+    ])].sort((a, b) => a.localeCompare(b))
   );
 
   readonly filteredTransactions = computed(() => {
@@ -65,11 +66,7 @@ export class TransactionsComponent {
     if (symbol === 'ALL') {
       return txList;
     }
-    return txList.filter(tx => {
-      const fromSymbol = tx.symbol.toUpperCase();
-      const toSymbol = tx.toSymbol?.toUpperCase();
-      return fromSymbol === symbol || toSymbol === symbol;
-    });
+    return txList.filter(tx => this.transactionInvolvesSymbol(tx, symbol));
   });
 
   readonly selectedAccount = computed(() =>
@@ -105,11 +102,7 @@ export class TransactionsComponent {
         next: txList => {
           this.transactions.set(txList);
           const symbol = this.selectedSymbol();
-          if (symbol !== 'ALL' && !txList.some(tx => {
-            const fromSymbol = tx.symbol.toUpperCase();
-            const toSymbol = tx.toSymbol?.toUpperCase();
-            return fromSymbol === symbol || toSymbol === symbol;
-          })) {
+          if (symbol !== 'ALL' && !txList.some(tx => this.transactionInvolvesSymbol(tx, symbol))) {
             this.selectedSymbol.set('ALL');
           }
         },
@@ -218,6 +211,151 @@ export class TransactionsComponent {
     if (type === 'buy') return 'Purchase';
     if (type === 'sell') return 'Sale';
     return 'Swap';
+  }
+
+  transactionInvolvesSymbol(tx: Transaction, selectedSymbol: string): boolean {
+    if (selectedSymbol === 'ALL') {
+      return true;
+    }
+
+    const symbol = this.normalizeSymbol(selectedSymbol);
+    if (this.normalizeSymbol(tx.symbol) === symbol) {
+      return true;
+    }
+
+    if (tx.type !== 'swap') {
+      return false;
+    }
+
+    return this.normalizeSymbol(tx.toSymbol) === symbol;
+  }
+
+  isSwapOutForSelectedSymbol(tx: Transaction, selectedSymbol: string): boolean {
+    if (tx.type !== 'swap' || selectedSymbol === 'ALL') {
+      return false;
+    }
+
+    return this.normalizeSymbol(tx.symbol) === this.normalizeSymbol(selectedSymbol);
+  }
+
+  isSwapInForSelectedSymbol(tx: Transaction, selectedSymbol: string): boolean {
+    if (tx.type !== 'swap' || selectedSymbol === 'ALL') {
+      return false;
+    }
+
+    return this.normalizeSymbol(tx.toSymbol) === this.normalizeSymbol(selectedSymbol);
+  }
+
+  displaySymbolForSelection(tx: Transaction, selectedSymbol: string): string {
+    if (tx.type !== 'swap') {
+      return tx.symbol;
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return `${tx.symbol} -> ${tx.toSymbol ?? '-'}`;
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return tx.symbol;
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return tx.toSymbol ?? tx.symbol;
+    }
+
+    return tx.symbol;
+  }
+
+  displayQuantityForSelection(tx: Transaction, selectedSymbol: string): string {
+    if (tx.type !== 'swap') {
+      return String(tx.quantity);
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return `${tx.quantity} -> ${tx.toQuantity ?? 0}`;
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return String(tx.quantity);
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return String(tx.toQuantity ?? 0);
+    }
+
+    return String(tx.quantity);
+  }
+
+  displayPriceForSelection(tx: Transaction): number | null {
+    if (tx.type === 'swap') {
+      return null;
+    }
+
+    return tx.price;
+  }
+
+  displayTotalPriceForSelection(tx: Transaction): number | null {
+    if (tx.type === 'swap') {
+      return null;
+    }
+
+    return this.totalPrice(tx);
+  }
+
+  displayTotalCostForSelection(tx: Transaction, selectedSymbol: string): number {
+    if (tx.type !== 'swap') {
+      return this.totalCost(tx);
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return tx.fees ?? 0;
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return tx.fees ?? 0;
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return 0;
+    }
+
+    return tx.fees ?? 0;
+  }
+
+  transactionLabelForSelection(tx: Transaction, selectedSymbol: string): string {
+    if (tx.type !== 'swap') {
+      return this.transactionLabel(tx.type);
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return 'Swap';
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return 'Swap Out';
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return 'Swap In';
+    }
+
+    return 'Swap';
+  }
+
+  isTransactionOutflowForSelection(tx: Transaction, selectedSymbol: string): boolean {
+    if (tx.type === 'sell') {
+      return true;
+    }
+
+    if (tx.type === 'buy') {
+      return false;
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return false;
+    }
+
+    return this.isSwapOutForSelectedSymbol(tx, selectedSymbol);
   }
 
   totalPrice(tx: Transaction): number {
@@ -348,5 +486,9 @@ export class TransactionsComponent {
   private errorMessage(error: unknown, prefix: string): string {
     const message = error instanceof Error ? error.message : String(error);
     return `${prefix}: ${message}`;
+  }
+
+  private normalizeSymbol(symbol: string | undefined | null): string {
+    return (symbol ?? '').trim().toUpperCase();
   }
 }

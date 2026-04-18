@@ -114,7 +114,11 @@ export class AccountDetailsComponent {
   readonly symbols = computed(() =>
     [...new Set([
       ...this.trackedSymbols().map(symbol => symbol.symbol.toUpperCase()),
-      ...this.transactions().map(tx => tx.symbol.toUpperCase()),
+      ...this.transactions().flatMap(tx => {
+        const fromSymbol = this.normalizeSymbol(tx.symbol);
+        const toSymbol = tx.type === 'swap' ? this.normalizeSymbol(tx.toSymbol) : null;
+        return toSymbol ? [fromSymbol, toSymbol] : [fromSymbol];
+      }),
       ...this.dividends().map(div => div.symbol.toUpperCase()),
     ])].sort((a, b) => a.localeCompare(b))
   );
@@ -125,7 +129,7 @@ export class AccountDetailsComponent {
     if (symbol === 'ALL') {
       return txList;
     }
-    return txList.filter(tx => tx.symbol.toUpperCase() === symbol);
+    return txList.filter(tx => this.transactionInvolvesSymbol(tx, symbol));
   });
 
   readonly filteredDividends = computed(() => {
@@ -143,29 +147,33 @@ export class AccountDetailsComponent {
       return null;
     }
 
-    const purchaseValue = this.filteredTransactions()
+    const txList = this.filteredTransactions();
+
+    const purchaseValue = txList
       .filter(tx => tx.type === 'buy')
       .reduce((sum, tx) => sum + this.totalCost(tx), 0);
 
-    const saleValue = this.filteredTransactions()
+    const swapFeeOutflow = txList
+      .filter(tx => this.isSwapOutForSelectedSymbol(tx, symbol))
+      .reduce((sum, tx) => sum + (tx.fees ?? 0), 0);
+
+    const saleValue = txList
       .filter(tx => tx.type === 'sell')
       .reduce((sum, tx) => sum + this.totalCost(tx), 0);
 
     const totalDividends = this.filteredDividends()
       .reduce((sum, div) => sum + div.amount, 0);
 
-    const currentPosition = this.filteredTransactions().reduce((position, tx) => {
-      if (tx.type === 'buy') {
-        return position + tx.quantity;
-      }
-      return position - tx.quantity;
-    }, 0);
+    const currentPosition = txList.reduce((position, tx) =>
+      position + this.shareDeltaForSelection(tx, symbol),
+    0);
 
-    const netCash = saleValue + totalDividends - purchaseValue;
+    const netCash = saleValue + totalDividends - purchaseValue - swapFeeOutflow;
 
     return {
       symbol,
       purchaseValue,
+      swapFeeOutflow,
       saleValue,
       totalDividends,
       currentPosition,
@@ -225,17 +233,16 @@ export class AccountDetailsComponent {
     }
 
     for (const tx of this.filteredTransactions()) {
-      const gross = tx.quantity * tx.price;
+      const amount = this.cashDeltaForSelection(tx, symbol);
       const fees = tx.fees ?? 0;
-      const amount = tx.type === 'buy' ? -(gross + fees) : gross - fees;
 
       rows.push({
         id: `transaction-${tx.id}`,
         date: tx.date,
         createdAt: tx.createdAt,
         source: 'transaction',
-        sourceLabel: tx.type === 'buy' ? 'Buy' : 'Sell',
-        details: `${this.symbolLabel(tx.symbol)} (${tx.quantity})`,
+        sourceLabel: this.transactionLabelForSelection(tx, symbol),
+        details: this.transactionDetailsForSelection(tx, symbol),
         amount,
         currency: tx.currency,
         notes: fees > 0 ? `Fees: ${this.formatNumber(fees)}` : undefined,
@@ -489,6 +496,216 @@ export class AccountDetailsComponent {
     return 'Swap';
   }
 
+  transactionInvolvesSymbol(tx: Transaction, selectedSymbol: string): boolean {
+    if (selectedSymbol === 'ALL') {
+      return true;
+    }
+
+    const symbol = this.normalizeSymbol(selectedSymbol);
+    const fromSymbol = this.normalizeSymbol(tx.symbol);
+    if (fromSymbol === symbol) {
+      return true;
+    }
+
+    if (tx.type !== 'swap') {
+      return false;
+    }
+
+    return this.normalizeSymbol(tx.toSymbol) === symbol;
+  }
+
+  isSwapOutForSelectedSymbol(tx: Transaction, selectedSymbol: string): boolean {
+    if (tx.type !== 'swap' || selectedSymbol === 'ALL') {
+      return false;
+    }
+
+    return this.normalizeSymbol(tx.symbol) === this.normalizeSymbol(selectedSymbol);
+  }
+
+  isSwapInForSelectedSymbol(tx: Transaction, selectedSymbol: string): boolean {
+    if (tx.type !== 'swap' || selectedSymbol === 'ALL') {
+      return false;
+    }
+
+    return this.normalizeSymbol(tx.toSymbol) === this.normalizeSymbol(selectedSymbol);
+  }
+
+  displaySymbolForSelection(tx: Transaction, selectedSymbol: string): string {
+    if (tx.type !== 'swap') {
+      return tx.symbol;
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return `${tx.symbol} -> ${tx.toSymbol ?? '-'}`;
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return tx.symbol;
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return tx.toSymbol ?? tx.symbol;
+    }
+
+    return tx.symbol;
+  }
+
+  displayQuantityForSelection(tx: Transaction, selectedSymbol: string): string {
+    if (tx.type !== 'swap') {
+      return this.formatShareQuantity(tx.quantity);
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return `${this.formatShareQuantity(tx.quantity)} -> ${this.formatShareQuantity(tx.toQuantity ?? 0)}`;
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return this.formatShareQuantity(tx.quantity);
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return this.formatShareQuantity(tx.toQuantity ?? 0);
+    }
+
+    return this.formatShareQuantity(tx.quantity);
+  }
+
+  displayPriceForSelection(tx: Transaction): number | null {
+    if (tx.type === 'swap') {
+      return null;
+    }
+    return tx.price;
+  }
+
+  displayTotalPriceForSelection(tx: Transaction): number | null {
+    if (tx.type === 'swap') {
+      return null;
+    }
+    return this.totalPrice(tx);
+  }
+
+  displayTotalCostForSelection(tx: Transaction, selectedSymbol: string): number {
+    if (tx.type !== 'swap') {
+      return this.totalCost(tx);
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return tx.fees ?? 0;
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return tx.fees ?? 0;
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return 0;
+    }
+
+    return tx.fees ?? 0;
+  }
+
+  shareDeltaForSelection(tx: Transaction, selectedSymbol: string): number {
+    if (tx.type === 'buy') {
+      return tx.quantity;
+    }
+
+    if (tx.type === 'sell') {
+      return -tx.quantity;
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return 0;
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return -tx.quantity;
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return tx.toQuantity ?? 0;
+    }
+
+    return 0;
+  }
+
+  cashDeltaForSelection(tx: Transaction, selectedSymbol: string): number {
+    const fees = tx.fees ?? 0;
+
+    if (tx.type === 'buy') {
+      return -(tx.quantity * tx.price + fees);
+    }
+
+    if (tx.type === 'sell') {
+      return tx.quantity * tx.price - fees;
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return -fees;
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return -fees;
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return 0;
+    }
+
+    return 0;
+  }
+
+  transactionLabelForSelection(tx: Transaction, selectedSymbol: string): string {
+    if (tx.type !== 'swap') {
+      return this.transactionLabel(tx.type);
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return 'Swap';
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return 'Swap Out';
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return 'Swap In';
+    }
+
+    return 'Swap';
+  }
+
+  isTransactionOutflowForSelection(tx: Transaction, selectedSymbol: string): boolean {
+    if (tx.type === 'sell') {
+      return true;
+    }
+
+    if (tx.type !== 'swap') {
+      return false;
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return false;
+    }
+
+    return this.isSwapOutForSelectedSymbol(tx, selectedSymbol);
+  }
+
+  transactionDetailsForSelection(tx: Transaction, selectedSymbol: string): string {
+    if (tx.type !== 'swap') {
+      return `${this.symbolLabel(tx.symbol)} (${this.formatShareQuantity(tx.quantity)})`;
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return `${this.symbolLabel(tx.symbol)} -> ${this.symbolLabel(tx.toSymbol ?? '-')} (${this.formatShareQuantity(tx.quantity)} -> ${this.formatShareQuantity(tx.toQuantity ?? 0)})`;
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return `${this.symbolLabel(tx.symbol)} (${this.formatShareQuantity(tx.quantity)})`;
+    }
+
+    return `${this.symbolLabel(tx.toSymbol ?? tx.symbol)} (${this.formatShareQuantity(tx.toQuantity ?? 0)})`;
+  }
+
   cashEventLabel(type: CashEventType): string {
     return type === 'deposit' ? 'Deposit' : 'Withdrawal';
   }
@@ -542,6 +759,10 @@ export class AccountDetailsComponent {
 
   cashAmountSigned(event: CashEvent): number {
     return event.type === 'deposit' ? event.amount : -event.amount;
+  }
+
+  private normalizeSymbol(symbol: string | undefined | null): string {
+    return (symbol ?? '').trim().toUpperCase();
   }
 
   async openAddTransactionDialog(): Promise<void> {
