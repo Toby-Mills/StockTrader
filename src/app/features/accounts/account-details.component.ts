@@ -480,7 +480,13 @@ export class AccountDetailsComponent {
   }
 
   transactionLabel(type: TransactionType): string {
-    return type === 'buy' ? 'Purchase' : 'Sale';
+    if (type === 'buy') {
+      return 'Purchase';
+    }
+    if (type === 'sell') {
+      return 'Sale';
+    }
+    return 'Swap';
   }
 
   cashEventLabel(type: CashEventType): string {
@@ -493,6 +499,9 @@ export class AccountDetailsComponent {
 
   totalCost(tx: Transaction): number {
     const fees = tx.fees ?? 0;
+    if (tx.type === 'swap') {
+      return fees;
+    }
     return tx.type === 'sell' ? this.totalPrice(tx) - fees : this.totalPrice(tx) + fees;
   }
 
@@ -933,6 +942,8 @@ export class AccountDetailsComponent {
         price: result.price,
         fees: result.fees,
         currency: result.currency,
+        toSymbol: result.toSymbol,
+        toQuantity: result.toQuantity,
       });
       this.feedbackMessage = 'Transaction added.';
     } catch (error) {
@@ -1399,6 +1410,8 @@ export class AccountDetailsComponent {
         price: result.price,
         fees: result.fees,
         currency: result.currency,
+        toSymbol: result.toSymbol,
+        toQuantity: result.toQuantity,
       });
       this.feedbackMessage = 'Transaction updated.';
     } catch (error) {

@@ -35,6 +35,8 @@ export interface TransactionDialogResult {
   price: number;
   fees?: number;
   currency: string;
+  toSymbol?: string;
+  toQuantity?: number;
 }
 
 @Component({
@@ -56,6 +58,7 @@ export interface TransactionDialogResult {
 })
 export class TransactionDialogComponent {
   private static readonly CREATE_SYMBOL_OPTION = '__CREATE_NEW_SYMBOL__';
+  private static readonly DEBUG_SWAPS = true;
 
   private readonly dialogData: TransactionDialogData;
 
@@ -92,23 +95,48 @@ export class TransactionDialogComponent {
   ) {
     this.dialogData = data ?? { accountId: '', accountCurrency: 'USD', symbols: [] };
     this.isEditMode = !!this.dialogData.transaction;
-    this.symbols = this.buildSymbols(this.dialogData.symbols, this.dialogData.transaction?.symbol);
+    const transaction = this.dialogData.transaction;
+    const initialType = this.resolveInitialType(transaction);
+    this.symbols = this.buildSymbols(
+      this.dialogData.symbols,
+      transaction?.symbol,
+      transaction?.toSymbol
+    );
 
     this.form = this.fb.nonNullable.group({
       symbol: [
-        this.dialogData.transaction?.symbol ?? '',
+        transaction?.symbol ?? '',
         [Validators.required, Validators.maxLength(20)],
       ],
-      type: [this.dialogData.transaction?.type ?? 'buy' as TransactionType, [Validators.required]],
-      date: [this.toDate(this.dialogData.transaction?.date) ?? new Date(), [Validators.required]],
-      quantity: [this.dialogData.transaction?.quantity ?? 1, [Validators.required, Validators.min(0.000001)]],
-      price: [this.dialogData.transaction?.price ?? 0, [Validators.required, Validators.min(0)]],
-      fees: [this.dialogData.transaction?.fees ?? 0, [Validators.min(0)]],
+      type: [initialType, [Validators.required]],
+      date: [this.toDate(transaction?.date) ?? new Date(), [Validators.required]],
+      quantity: [transaction?.quantity ?? 1, [Validators.required, Validators.min(0.000001)]],
+      price: [transaction?.price ?? 0, [Validators.required, Validators.min(0)]],
+      fees: [transaction?.fees ?? 0, [Validators.min(0)]],
+      toSymbol: [transaction?.toSymbol ?? '', [Validators.maxLength(20)]],
+      toQuantity: [transaction?.toQuantity ?? 1, [Validators.min(0.000001)]],
     });
+
+    if (TransactionDialogComponent.DEBUG_SWAPS && transaction) {
+      console.groupCollapsed('[SwapDebug][Dialog][Init] Edit transaction loaded');
+      console.log('transaction.id', transaction.id);
+      console.log('transaction.type', transaction.type);
+      console.log('transaction.symbol', transaction.symbol);
+      console.log('transaction.toSymbol', transaction.toSymbol);
+      console.log('transaction.quantity', transaction.quantity);
+      console.log('transaction.toQuantity', transaction.toQuantity);
+      console.log('resolvedInitialType', initialType);
+      console.log('form.initial', this.form.getRawValue());
+      console.groupEnd();
+    }
   }
 
   get accountCurrency(): string {
     return this.dialogData.accountCurrency;
+  }
+
+  get isSwap(): boolean {
+    return this.form.controls.type.value === 'swap';
   }
 
   get totalPrice(): number {
@@ -117,12 +145,16 @@ export class TransactionDialogComponent {
   }
 
   get totalAmountLabel(): string {
-    return this.form.controls.type.value === 'sell' ? 'Net Proceeds' : 'Overall Total Cost';
+    const type = this.form.controls.type.value;
+    if (type === 'sell') return 'Net Proceeds';
+    if (type === 'swap') return 'Fees Paid';
+    return 'Overall Total Cost';
   }
 
   get totalCost(): number {
     const value = this.form.getRawValue();
     const fees = Number(value.fees || 0);
+    if (value.type === 'swap') return fees;
     return value.type === 'sell' ? this.totalPrice - fees : this.totalPrice + fees;
   }
 
@@ -298,7 +330,42 @@ export class TransactionDialogComponent {
     }
 
     const value = this.form.getRawValue();
-    this.dialogRef.close({
+
+    if (value.type === 'swap') {
+      const toSymbolTrimmed = value.toSymbol.trim().toUpperCase();
+      if (!toSymbolTrimmed) {
+        this.form.controls.toSymbol.setErrors({ required: true });
+        this.form.markAllAsTouched();
+        return;
+      }
+      if (!value.toQuantity || value.toQuantity <= 0) {
+        this.form.controls.toQuantity.setErrors({ min: true });
+        this.form.markAllAsTouched();
+        return;
+      }
+      const payload: TransactionDialogResult = {
+        symbol: value.symbol.trim().toUpperCase(),
+        type: value.type,
+        date: this.toNoonDate(value.date),
+        quantity: Number(value.quantity),
+        price: 0,
+        fees: Number(value.fees || 0),
+        currency: this.accountCurrency,
+        toSymbol: toSymbolTrimmed,
+        toQuantity: Number(value.toQuantity),
+      };
+
+      if (TransactionDialogComponent.DEBUG_SWAPS) {
+        console.groupCollapsed('[SwapDebug][Dialog][Submit] Swap payload');
+        console.log('payload', payload);
+        console.groupEnd();
+      }
+
+      this.dialogRef.close(payload);
+      return;
+    }
+
+    const payload: TransactionDialogResult = {
       symbol: value.symbol.trim().toUpperCase(),
       type: value.type,
       date: this.toNoonDate(value.date),
@@ -306,7 +373,15 @@ export class TransactionDialogComponent {
       price: Number(value.price),
       fees: Number(value.fees || 0),
       currency: this.accountCurrency,
-    });
+    };
+
+    if (TransactionDialogComponent.DEBUG_SWAPS) {
+      console.groupCollapsed('[SwapDebug][Dialog][Submit] Non-swap payload');
+      console.log('payload', payload);
+      console.groupEnd();
+    }
+
+    this.dialogRef.close(payload);
   }
 
   async openCreateSymbolDialog(): Promise<void> {
@@ -364,7 +439,7 @@ export class TransactionDialogComponent {
     }
   }
 
-  private buildSymbols(symbols: TrackedSymbol[], currentSymbol?: string): TrackedSymbol[] {
+  private buildSymbols(symbols: TrackedSymbol[], currentSymbol?: string, currentToSymbol?: string): TrackedSymbol[] {
     const normalized = symbols
       .map(symbol => ({
         ...symbol,
@@ -390,7 +465,34 @@ export class TransactionDialogComponent {
       });
     }
 
+    const existingToSymbol = currentToSymbol?.trim().toUpperCase();
+    if (existingToSymbol && !uniqueBySymbol.has(existingToSymbol)) {
+      uniqueBySymbol.set(existingToSymbol, {
+        id: `legacy-to-${existingToSymbol}`,
+        accountId: '',
+        symbol: existingToSymbol,
+        fullName: 'Not in symbol list yet',
+      });
+    }
+
     return [...uniqueBySymbol.values()].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  }
+
+  private resolveInitialType(transaction?: Transaction): TransactionType {
+    if (!transaction) {
+      return 'buy';
+    }
+
+    if (transaction.type === 'swap') {
+      return 'swap';
+    }
+
+    // Be defensive for legacy/partially-migrated rows that contain swap fields.
+    if (transaction.toSymbol || transaction.toQuantity != null) {
+      return 'swap';
+    }
+
+    return transaction.type;
   }
 
   private toNoonDate(rawDate: unknown): Date {

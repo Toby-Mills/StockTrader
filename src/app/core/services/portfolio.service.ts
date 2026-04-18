@@ -89,12 +89,24 @@ export class PortfolioService {
       if (tx.type === 'buy') {
         existing.cost += tx.quantity * tx.price + (tx.fees ?? 0);
         existing.qty  += tx.quantity;
-      } else {
+        positionBySymbol.set(tx.symbol, existing);
+      } else if (tx.type === 'sell') {
         const avgCost = existing.qty > 0 ? existing.cost / existing.qty : 0;
         existing.cost -= avgCost * tx.quantity;
         existing.qty  -= tx.quantity;
+        positionBySymbol.set(tx.symbol, existing);
+      } else if (tx.type === 'swap' && tx.toSymbol && tx.toQuantity != null) {
+        // Transfer cost basis from the outgoing symbol to the incoming symbol.
+        const avgCost = existing.qty > 0 ? existing.cost / existing.qty : 0;
+        const transferredCost = avgCost * tx.quantity + (tx.fees ?? 0);
+        existing.cost -= avgCost * tx.quantity;
+        existing.qty  -= tx.quantity;
+        positionBySymbol.set(tx.symbol, existing);
+        const toExisting = positionBySymbol.get(tx.toSymbol) ?? { qty: 0, cost: 0, currency: tx.currency };
+        toExisting.cost += transferredCost;
+        toExisting.qty  += tx.toQuantity;
+        positionBySymbol.set(tx.toSymbol, toExisting);
       }
-      positionBySymbol.set(tx.symbol, existing);
     });
 
     return Array.from(positionBySymbol.entries()).map(([symbol, { qty, cost, currency }]) => {
@@ -173,9 +185,14 @@ export class PortfolioService {
     for (const event of events) {
       if (event.source === 'transaction') {
         const tx = event.transaction;
-        const gross = tx.quantity * tx.price;
-        const fees = tx.fees ?? 0;
-        cashBalance += tx.type === 'buy' ? -(gross + fees) : gross - fees;
+        if (tx.type === 'swap') {
+          // Swaps have no cash impact beyond any fees paid.
+          cashBalance -= tx.fees ?? 0;
+        } else {
+          const gross = tx.quantity * tx.price;
+          const fees = tx.fees ?? 0;
+          cashBalance += tx.type === 'buy' ? -(gross + fees) : gross - fees;
+        }
         continue;
       }
 

@@ -30,6 +30,7 @@ import { TransactionDialogComponent, TransactionDialogResult } from './transacti
     styleUrl: './transactions.component.scss'
 })
 export class TransactionsComponent {
+  private static readonly DEBUG_SWAPS = true;
   private readonly accountService = inject(AccountService);
   private readonly transactionService = inject(TransactionService);
   private readonly symbolCatalogService = inject(SymbolCatalogService);
@@ -49,7 +50,13 @@ export class TransactionsComponent {
   readonly trackedSymbols = signal<TrackedSymbol[]>([]);
 
   readonly symbols = computed(() =>
-    [...new Set(this.transactions().map(tx => tx.symbol.toUpperCase()))].sort((a, b) => a.localeCompare(b))
+    [...new Set(
+      this.transactions().flatMap(tx => {
+        const fromSymbol = tx.symbol.toUpperCase();
+        const toSymbol = tx.toSymbol?.toUpperCase();
+        return toSymbol ? [fromSymbol, toSymbol] : [fromSymbol];
+      })
+    )].sort((a, b) => a.localeCompare(b))
   );
 
   readonly filteredTransactions = computed(() => {
@@ -58,7 +65,11 @@ export class TransactionsComponent {
     if (symbol === 'ALL') {
       return txList;
     }
-    return txList.filter(tx => tx.symbol.toUpperCase() === symbol);
+    return txList.filter(tx => {
+      const fromSymbol = tx.symbol.toUpperCase();
+      const toSymbol = tx.toSymbol?.toUpperCase();
+      return fromSymbol === symbol || toSymbol === symbol;
+    });
   });
 
   readonly selectedAccount = computed(() =>
@@ -94,7 +105,11 @@ export class TransactionsComponent {
         next: txList => {
           this.transactions.set(txList);
           const symbol = this.selectedSymbol();
-          if (symbol !== 'ALL' && !txList.some(tx => tx.symbol.toUpperCase() === symbol)) {
+          if (symbol !== 'ALL' && !txList.some(tx => {
+            const fromSymbol = tx.symbol.toUpperCase();
+            const toSymbol = tx.toSymbol?.toUpperCase();
+            return fromSymbol === symbol || toSymbol === symbol;
+          })) {
             this.selectedSymbol.set('ALL');
           }
         },
@@ -188,11 +203,21 @@ export class TransactionsComponent {
       return;
     }
 
+    if (TransactionsComponent.DEBUG_SWAPS) {
+      console.groupCollapsed('[SwapDebug][Transactions][Edit] Dialog returned result');
+      console.log('originalTx.id', tx.id);
+      console.log('originalTx', tx);
+      console.log('dialogResult', result);
+      console.groupEnd();
+    }
+
     await this.updateTransaction(account.id, tx.id, result);
   }
 
   transactionLabel(type: TransactionType): string {
-    return type === 'buy' ? 'Purchase' : 'Sale';
+    if (type === 'buy') return 'Purchase';
+    if (type === 'sell') return 'Sale';
+    return 'Swap';
   }
 
   totalPrice(tx: Transaction): number {
@@ -201,6 +226,7 @@ export class TransactionsComponent {
 
   totalCost(tx: Transaction): number {
     const fees = tx.fees ?? 0;
+    if (tx.type === 'swap') return fees;
     return tx.type === 'sell' ? this.totalPrice(tx) - fees : this.totalPrice(tx) + fees;
   }
 
@@ -234,7 +260,7 @@ export class TransactionsComponent {
     this.feedbackMessage = '';
 
     try {
-      await this.transactionService.addTransaction(accountId, {
+      const payload = {
         symbol: result.symbol,
         type: result.type,
         date: result.date,
@@ -242,7 +268,18 @@ export class TransactionsComponent {
         price: result.price,
         fees: result.fees,
         currency: result.currency,
-      });
+        toSymbol: result.toSymbol,
+        toQuantity: result.toQuantity,
+      };
+
+      if (TransactionsComponent.DEBUG_SWAPS) {
+        console.groupCollapsed('[SwapDebug][Transactions][Create] Saving payload');
+        console.log('accountId', accountId);
+        console.log('payload', payload);
+        console.groupEnd();
+      }
+
+      await this.transactionService.addTransaction(accountId, payload);
       this.feedbackMessage = 'Transaction added.';
     } catch (error) {
       this.feedbackMessage = this.errorMessage(error, 'Could not add transaction');
@@ -264,7 +301,7 @@ export class TransactionsComponent {
     this.feedbackMessage = '';
 
     try {
-      await this.transactionService.updateTransaction(accountId, txId, {
+      const payload = {
         symbol: result.symbol,
         type: result.type,
         date: result.date,
@@ -272,7 +309,19 @@ export class TransactionsComponent {
         price: result.price,
         fees: result.fees,
         currency: result.currency,
-      });
+        toSymbol: result.toSymbol,
+        toQuantity: result.toQuantity,
+      };
+
+      if (TransactionsComponent.DEBUG_SWAPS) {
+        console.groupCollapsed('[SwapDebug][Transactions][Update] Saving payload');
+        console.log('accountId', accountId);
+        console.log('txId', txId);
+        console.log('payload', payload);
+        console.groupEnd();
+      }
+
+      await this.transactionService.updateTransaction(accountId, txId, payload);
       this.feedbackMessage = 'Transaction updated.';
     } catch (error) {
       this.feedbackMessage = this.errorMessage(error, 'Could not update transaction');
