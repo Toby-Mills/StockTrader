@@ -88,39 +88,35 @@
 
             <div class="balance-sheet-table" role="table" aria-label="Balance sheet values">
               <div class="balance-sheet-row section" role="row">
-                <p role="cell">Cash Outflows</p>
-                <p role="cell">Amount</p>
+                <p role="columnheader"></p>
+                <p role="columnheader">Cash</p>
+                <p role="columnheader">Units</p>
               </div>
               <div class="balance-sheet-row" role="row">
                 <p role="cell">Total Purchase Value</p>
                 <p role="cell" class="cash-out">{{ formatMoney(summary.purchaseValue, acc.currency) }}</p>
+                <p role="cell"></p>
               </div>
               <div class="balance-sheet-row" role="row">
                 <p role="cell">Swap Fees</p>
                 <p role="cell" class="cash-out">{{ formatMoney(summary.swapFeeOutflow, acc.currency) }}</p>
-              </div>
-
-              <div class="balance-sheet-row section" role="row">
-                <p role="cell">Cash Inflows</p>
-                <p role="cell">Amount</p>
+                <p role="cell"></p>
               </div>
               <div class="balance-sheet-row" role="row">
                 <p role="cell">Total Sale Value</p>
                 <p role="cell">{{ formatMoney(summary.saleValue, acc.currency) }}</p>
+                <p role="cell"></p>
               </div>
               <div class="balance-sheet-row" role="row">
                 <p role="cell">Total Dividends</p>
                 <p role="cell" [class.cash-out]="summary.totalDividends < 0">
                   {{ formatMoney(summary.totalDividends, acc.currency) }}
                 </p>
-              </div>
-
-              <div class="balance-sheet-row section" role="row">
-                <p role="cell">Position</p>
-                <p role="cell">Units</p>
+                <p role="cell"></p>
               </div>
               <div class="balance-sheet-row" role="row">
                 <p role="cell">Current Position</p>
+                <p role="cell"></p>
                 <p role="cell" [class.cash-out]="summary.currentPosition < 0">
                   {{ formatShareQuantity(summary.currentPosition) }}
                 </p>
@@ -131,6 +127,7 @@
                 <p role="cell" [class.cash-out]="summary.netCash < 0">
                   {{ formatMoney(summary.netCash, acc.currency) }}
                 </p>
+                <p role="cell"></p>
               </div>
             </div>
           </section>

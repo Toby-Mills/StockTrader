@@ -147,7 +147,7 @@ mat-card-content {
 
 .balance-sheet-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   gap: 1rem;
   padding: 0.6rem 1rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
@@ -158,10 +158,12 @@ mat-card-content {
   margin: 0;
 }
 
-.balance-sheet-row p:last-child {
+.balance-sheet-row p:nth-child(2),
+.balance-sheet-row p:nth-child(3) {
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
+  min-width: 7rem;
 }
 
 .balance-sheet-row.section {
@@ -344,7 +346,8 @@ mat-card-content {
     gap: 0.3rem;
   }
 
-  .balance-sheet-row p:last-child {
+  .balance-sheet-row p:nth-child(2),
+  .balance-sheet-row p:nth-child(3) {
     text-align: left;
   }
 
