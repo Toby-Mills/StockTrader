@@ -110,11 +110,11 @@ export class TransactionDialogComponent {
       ],
       type: [initialType, [Validators.required]],
       date: [this.toDate(transaction?.date) ?? new Date(), [Validators.required]],
-      quantity: [transaction?.quantity ?? 1, [Validators.required, Validators.min(0.000001)]],
+      quantity: [transaction?.quantity ?? 1, [Validators.required, Validators.min(0)]],
       price: [transaction?.price ?? 0, [Validators.required, Validators.min(0)]],
       fees: [transaction?.fees ?? 0, [Validators.min(0)]],
       toSymbol: [transaction?.toSymbol ?? '', [Validators.maxLength(20)]],
-      toQuantity: [transaction?.toQuantity ?? 1, [Validators.min(0.000001)]],
+      toQuantity: [transaction?.toQuantity ?? 1, [Validators.min(0)]],
     });
 
     if (TransactionDialogComponent.DEBUG_SWAPS && transaction) {
@@ -338,7 +338,7 @@ export class TransactionDialogComponent {
         this.form.markAllAsTouched();
         return;
       }
-      if (!value.toQuantity || value.toQuantity <= 0) {
+      if (value.toQuantity == null || Number(value.toQuantity) < 0) {
         this.form.controls.toQuantity.setErrors({ min: true });
         this.form.markAllAsTouched();
         return;
@@ -362,6 +362,12 @@ export class TransactionDialogComponent {
       }
 
       this.dialogRef.close(payload);
+      return;
+    }
+
+    if (value.quantity == null || Number(value.quantity) <= 0) {
+      this.form.controls.quantity.setErrors({ min: true });
+      this.form.markAllAsTouched();
       return;
     }
 

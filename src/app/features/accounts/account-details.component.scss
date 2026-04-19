@@ -228,7 +228,7 @@ mat-card-content {
 }
 
 .tx-table {
-  min-width: 920px;
+  min-width: 1060px;
 }
 
 .div-table {
@@ -281,6 +281,14 @@ mat-card-content {
 
 .actions-cell {
   text-align: right;
+}
+
+.notes-cell {
+  white-space: normal;
+  min-width: 220px;
+  max-width: 360px;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .secondary-value {

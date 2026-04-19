@@ -31,18 +31,6 @@ export const routes: Routes = [
       import('./features/portfolio/portfolio.component').then(m => m.PortfolioComponent),
   },
   {
-    path: 'transactions',
-    canActivate: [authGuard],
-    loadComponent: () =>
-      import('./features/transactions/transactions.component').then(m => m.TransactionsComponent),
-  },
-  {
-    path: 'dividends',
-    canActivate: [authGuard],
-    loadComponent: () =>
-      import('./features/dividends/dividends.component').then(m => m.DividendsComponent),
-  },
-  {
     path: 'analytics',
     canActivate: [authGuard],
     loadComponent: () =>

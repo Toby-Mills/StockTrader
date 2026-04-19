@@ -169,6 +169,7 @@
                         <th class="numeric-col">Total Price</th>
                         <th class="numeric-col">Fees</th>
                         <th class="numeric-col">Total Cost</th>
+                        <th>Notes</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -187,6 +188,7 @@
                           <td class="numeric-col">{{ displayTotalPriceForSelection(tx) == null ? '-' : formatNumber(displayTotalPriceForSelection(tx) ?? 0) }}</td>
                           <td class="numeric-col">{{ formatNumber(tx.fees ?? 0) }}</td>
                           <td class="numeric-col">{{ formatNumber(displayTotalCostForSelection(tx, selectedSymbol())) }}</td>
+                          <td class="notes-cell">{{ tx.notes?.trim() || '-' }}</td>
                           <td class="actions-cell">
                             <button mat-button type="button" (click)="openEditTransactionDialog(tx)" [disabled]="isSaving">
                               Edit

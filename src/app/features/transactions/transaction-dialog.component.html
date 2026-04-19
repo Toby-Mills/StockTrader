@@ -115,7 +115,7 @@
     <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('quantity')">
       <mat-label>{{ isSwap ? 'From Shares' : 'Number of Shares' }}</mat-label>
       <input matInput type="number" min="0" step="0.000001" formControlName="quantity" />
-      <mat-error>Quantity must be greater than zero.</mat-error>
+      <mat-error>{{ isSwap ? 'Quantity must be zero or more.' : 'Quantity must be greater than zero.' }}</mat-error>
     </mat-form-field>
 
     @if (isSwap) {
@@ -135,7 +135,7 @@
       <mat-form-field appearance="outline">
         <mat-label>To Shares</mat-label>
         <input matInput type="number" min="0" step="0.000001" formControlName="toQuantity" />
-        <mat-error>To quantity must be greater than zero.</mat-error>
+        <mat-error>To quantity must be zero or more.</mat-error>
       </mat-form-field>
     }
 
