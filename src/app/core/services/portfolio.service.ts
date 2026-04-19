@@ -207,7 +207,7 @@ export class PortfolioService {
         continue;
       }
 
-      cashBalance -= event.cashEvent.amount + fee;
+      cashBalance -= event.cashEvent.amount + fee; // handles 'withdrawal' and 'fee'
     }
 
     return cashBalance;

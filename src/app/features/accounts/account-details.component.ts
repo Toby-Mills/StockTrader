@@ -765,11 +765,29 @@ export class AccountDetailsComponent {
   }
 
   cashEventLabel(type: CashEventType): string {
-    return type === 'deposit' ? 'Deposit' : 'Withdrawal';
+    switch (type) {
+      case 'deposit':
+        return 'Deposit';
+      case 'withdrawal':
+        return 'Withdrawal';
+      case 'fee':
+        return 'Account Fee';
+      default:
+        return type;
+    }
   }
 
   cashEventDetails(type: CashEventType): string {
-    return type === 'deposit' ? 'Account funding' : 'Cash withdrawal';
+    switch (type) {
+      case 'deposit':
+        return 'Account funding';
+      case 'withdrawal':
+        return 'Cash withdrawal';
+      case 'fee':
+        return 'Account fee';
+      default:
+        return type;
+    }
   }
 
   totalPrice(tx: Transaction): number {
