@@ -42,7 +42,7 @@ interface CashLedgerRow {
   cashEvent?: CashEvent;
 }
 
-type CsvTransactionKind = 'Purchase' | 'Sell' | 'Sale' | 'Dividend' | 'Foreign Dividends' | 'REIT Distribution';
+type CsvTransactionKind = 'Purchase' | 'Sell' | 'Sale' | 'Dividend' | 'Foreign Dividends' | 'REIT Distribution' | 'Securities Interest' | 'Foreign Dividend Witholding Tax';
 
 interface ParsedCsvRow {
   rowNumber: number;
@@ -54,6 +54,7 @@ interface ParsedCsvRow {
   shares?: number;
   pricePerShare?: number;
   fees?: number;
+  dividendValue?: number;
 }
 
 @Component({
@@ -77,6 +78,8 @@ export class AccountDetailsComponent {
     'Dividend',
     'Foreign Dividends',
     'REIT Distribution',
+    'Securities Interest',
+    'Foreign Dividend Witholding Tax',
   ];
 
   private static readonly CSV_TRANSACTION_TYPES: readonly CsvTransactionKind[] = [
@@ -86,7 +89,7 @@ export class AccountDetailsComponent {
     ...AccountDetailsComponent.CSV_DIVIDEND_TYPES,
   ];
 
-  private static readonly CSV_HEADER_LINES = 2;
+  private static readonly CSV_HEADER_LINES = 1;
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -1294,7 +1297,7 @@ export class AccountDetailsComponent {
           continue;
         }
 
-        if (row.pricePerShare == null) {
+        if (row.dividendValue == null) {
           skippedRows += 1;
           continue;
         }
@@ -1302,7 +1305,7 @@ export class AccountDetailsComponent {
         const dividendKey = this.buildDividendDuplicateKey(
           symbol,
           row.date,
-          row.pricePerShare,
+          row.dividendValue,
           row.shares,
         );
 
@@ -1318,7 +1321,7 @@ export class AccountDetailsComponent {
             symbol,
             dividendTypeId,
             date: row.date,
-            amount: row.pricePerShare,
+            amount: row.dividendValue,
             sharesHeld: row.shares,
             currency: account.currency,
             notes: `Imported from CSV row ${row.rowNumber}.`,
@@ -1399,6 +1402,7 @@ export class AccountDetailsComponent {
         shares: this.parseCsvNumber(columns[5]),
         pricePerShare: this.parseCsvNumber(columns[6]),
         fees: this.parseCsvNumber(columns[7]),
+        dividendValue: this.parseCsvNumber(columns[9]),
       });
     }
 
