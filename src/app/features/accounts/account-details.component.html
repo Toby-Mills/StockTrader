@@ -201,7 +201,7 @@
                         <tr>
                           <td>{{ formatDate(tx.date) }}</td>
                           <td class="symbol-cell">
-                            @if (tx.type === 'swap' && selectedSymbol() === 'ALL') {
+                            @if (tx.type === 'swap' && (selectedSymbol() === 'ALL' || isStockSplitForSelectedSymbol(tx, selectedSymbol()))) {
                               <app-symbol [symbol]="tx.symbol" />
                               <span class="swap-arrow">→</span>
                               <app-symbol [symbol]="tx.toSymbol ?? '-'" />

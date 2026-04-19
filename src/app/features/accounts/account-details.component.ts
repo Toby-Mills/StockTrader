@@ -525,6 +525,15 @@ export class AccountDetailsComponent {
     return this.normalizeSymbol(tx.toSymbol) === symbol;
   }
 
+  isStockSplitForSelectedSymbol(tx: Transaction, selectedSymbol: string): boolean {
+    if (tx.type !== 'swap' || selectedSymbol === 'ALL') {
+      return false;
+    }
+
+    const symbol = this.normalizeSymbol(selectedSymbol);
+    return this.normalizeSymbol(tx.symbol) === symbol && this.normalizeSymbol(tx.toSymbol) === symbol;
+  }
+
   isSwapOutForSelectedSymbol(tx: Transaction, selectedSymbol: string): boolean {
     if (tx.type !== 'swap' || selectedSymbol === 'ALL') {
       return false;
@@ -586,7 +595,7 @@ export class AccountDetailsComponent {
       return this.formatShareQuantity(tx.quantity);
     }
 
-    if (selectedSymbol === 'ALL') {
+    if (selectedSymbol === 'ALL' || this.isStockSplitForSelectedSymbol(tx, selectedSymbol)) {
       return `${this.formatShareQuantity(tx.quantity)} -> ${this.formatShareQuantity(tx.toQuantity ?? 0)}`;
     }
 
@@ -648,6 +657,10 @@ export class AccountDetailsComponent {
       return 0;
     }
 
+    if (this.isStockSplitForSelectedSymbol(tx, selectedSymbol)) {
+      return (tx.toQuantity ?? 0) - tx.quantity;
+    }
+
     if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
       return -tx.quantity;
     }
@@ -674,6 +687,10 @@ export class AccountDetailsComponent {
       return -fees;
     }
 
+    if (this.isStockSplitForSelectedSymbol(tx, selectedSymbol)) {
+      return -fees;
+    }
+
     if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
       return -fees;
     }
@@ -690,7 +707,7 @@ export class AccountDetailsComponent {
       return this.transactionLabel(tx.type);
     }
 
-    if (selectedSymbol === 'ALL') {
+    if (selectedSymbol === 'ALL' || this.isStockSplitForSelectedSymbol(tx, selectedSymbol)) {
       return 'Swap';
     }
 
@@ -718,6 +735,10 @@ export class AccountDetailsComponent {
       return false;
     }
 
+    if (this.isStockSplitForSelectedSymbol(tx, selectedSymbol)) {
+      return false;
+    }
+
     return this.isSwapOutForSelectedSymbol(tx, selectedSymbol);
   }
 
@@ -726,7 +747,7 @@ export class AccountDetailsComponent {
       return `${this.symbolLabel(tx.symbol)} (${this.formatShareQuantity(tx.quantity)})`;
     }
 
-    if (selectedSymbol === 'ALL') {
+    if (selectedSymbol === 'ALL' || this.isStockSplitForSelectedSymbol(tx, selectedSymbol)) {
       return `${this.symbolLabel(tx.symbol)} -> ${this.symbolLabel(tx.toSymbol ?? '-')} (${this.formatShareQuantity(tx.quantity)} -> ${this.formatShareQuantity(tx.toQuantity ?? 0)})`;
     }
 
@@ -746,7 +767,7 @@ export class AccountDetailsComponent {
       return fromName ? `${fromName} (${quantity})` : `(${quantity})`;
     }
 
-    if (selectedSymbol === 'ALL') {
+    if (selectedSymbol === 'ALL' || this.isStockSplitForSelectedSymbol(tx, selectedSymbol)) {
       const fromQty = this.formatShareQuantity(tx.quantity);
       const toQty = this.formatShareQuantity(tx.toQuantity ?? 0);
       if (fromName && toName) {
