@@ -91,8 +91,12 @@
                   <td>{{ formatDate(dividend.date) }}</td>
                   <td><app-symbol [symbol]="dividend.symbol"></app-symbol></td>
                   <td>{{ dividendTypeLabel(dividend) }}</td>
-                  <td [class.cash-out]="dividend.amount < 0">
-                    {{ formatMoney(dividend.amount, dividend.currency) }}
+                  <td [class.cash-out]="netDividendAmount(dividend) < 0">
+                    {{ formatMoney(netDividendAmount(dividend), dividend.currency) }}
+                    @if ((dividend.fee ?? 0) > 0) {
+                      <div class="secondary-value">Gross: {{ formatMoney(dividend.amount, dividend.currency) }}</div>
+                      <div class="secondary-value cash-out">Fee: {{ formatMoney(dividend.fee ?? 0, dividend.currency) }}</div>
+                    }
                     @if (dividend.perShare != null) {
                       <div class="secondary-value" [class.cash-out]="dividend.perShare < 0">
                         Per share: {{ formatMoney(dividend.perShare, dividend.currency) }}
@@ -100,7 +104,7 @@
                     }
                   </td>
                   <td>{{ dividend.sharesHeld ?? '-' }}</td>
-                  <td>{{ dividend.notes || '-' }}</td>
+                  <td>{{ dividendNotes(dividend) || '-' }}</td>
                   <td class="actions-cell">
                     <button mat-button type="button" (click)="openEditDialog(dividend)" [disabled]="isSaving">
                       Edit

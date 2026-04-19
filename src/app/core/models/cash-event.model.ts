@@ -8,6 +8,7 @@ export interface CashEvent {
   type: CashEventType;
   date: Date;
   amount: number;
+  fee?: number;
   currency: string;
   notes?: string;
 }

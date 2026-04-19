@@ -18,6 +18,7 @@ export interface CashEventDialogResult {
   type: CashEventType;
   date: Date;
   amount: number;
+  fee: number;
   currency: string;
   notes?: string;
 }
@@ -56,6 +57,7 @@ export class CashEventDialogComponent {
       type: [this.dialogData.cashEvent?.type ?? 'deposit' as CashEventType, [Validators.required]],
       date: [this.toDate(this.dialogData.cashEvent?.date) ?? new Date(), [Validators.required]],
       amount: [this.dialogData.cashEvent?.amount ?? 0, [Validators.required, Validators.min(0.000001)]],
+      fee: [this.dialogData.cashEvent?.fee ?? 0, [Validators.min(0)]],
       notes: [this.dialogData.cashEvent?.notes ?? '', [Validators.maxLength(500)]],
     });
   }
@@ -75,6 +77,7 @@ export class CashEventDialogComponent {
       type: value.type,
       date: this.toNoonDate(value.date),
       amount: Number(value.amount),
+      fee: Number(value.fee || 0),
       currency: this.accountCurrency,
       notes: value.notes?.trim() || undefined,
     });

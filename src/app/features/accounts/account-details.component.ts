@@ -169,7 +169,7 @@ export class AccountDetailsComponent {
       .reduce((sum, tx) => sum + this.totalCost(tx), 0);
 
     const totalDividends = this.filteredDividends()
-      .reduce((sum, div) => sum + div.amount, 0);
+      .reduce((sum, div) => sum + this.netDividendAmount(div), 0);
 
     const currentPosition = txList.reduce((position, tx) =>
       position + this.shareDeltaForSelection(tx, symbol),
@@ -216,10 +216,10 @@ export class AccountDetailsComponent {
           createdAt: event.createdAt,
           source: 'cash-event',
           sourceLabel: this.cashEventLabel(event.type),
-          details: event.type === 'deposit' ? 'Account funding' : 'Cash withdrawal',
+          details: this.cashEventDetails(event.type),
           amount: this.cashAmountSigned(event),
           currency: event.currency,
-          notes: event.notes,
+          notes: this.cashEventNotes(event),
           cashEvent: event,
         });
       }
@@ -235,9 +235,9 @@ export class AccountDetailsComponent {
         sourceLabel: 'Dividend',
         details: fullName,
         symbol: dividend.symbol,
-        amount: dividend.amount,
+        amount: this.netDividendAmount(dividend),
         currency: dividend.currency,
-        notes: dividend.notes,
+        notes: this.dividendNotes(dividend),
       });
     }
 
@@ -768,6 +768,10 @@ export class AccountDetailsComponent {
     return type === 'deposit' ? 'Deposit' : 'Withdrawal';
   }
 
+  cashEventDetails(type: CashEventType): string {
+    return type === 'deposit' ? 'Account funding' : 'Cash withdrawal';
+  }
+
   totalPrice(tx: Transaction): number {
     return tx.quantity * tx.price;
   }
@@ -816,7 +820,44 @@ export class AccountDetailsComponent {
   }
 
   cashAmountSigned(event: CashEvent): number {
-    return event.type === 'deposit' ? event.amount : -event.amount;
+    const fee = event.fee ?? 0;
+    return event.type === 'deposit'
+      ? event.amount - fee
+      : -(event.amount + fee);
+  }
+
+  cashEventNotes(event: CashEvent): string | undefined {
+    const fee = event.fee ?? 0;
+    const trimmedNotes = event.notes?.trim();
+    if (fee <= 0) {
+      return trimmedNotes || undefined;
+    }
+
+    const feeMessage = `Fee: ${this.formatNumber(fee)}`;
+    if (!trimmedNotes) {
+      return feeMessage;
+    }
+
+    return `${feeMessage}. ${trimmedNotes}`;
+  }
+
+  netDividendAmount(dividend: Dividend): number {
+    return dividend.amount - (dividend.fee ?? 0);
+  }
+
+  dividendNotes(dividend: Dividend): string | undefined {
+    const fee = dividend.fee ?? 0;
+    const trimmedNotes = dividend.notes?.trim();
+    if (fee <= 0) {
+      return trimmedNotes || undefined;
+    }
+
+    const feeMessage = `Fee: ${this.formatNumber(fee)}`;
+    if (!trimmedNotes) {
+      return feeMessage;
+    }
+
+    return `${feeMessage}. ${trimmedNotes}`;
   }
 
   private normalizeSymbol(symbol: string | undefined | null): string {
@@ -1715,6 +1756,7 @@ export class AccountDetailsComponent {
         dividendTypeId: result.dividendTypeId,
         date: result.date,
         amount: result.amount,
+        fee: result.fee,
         perShare: result.perShare,
         sharesHeld: result.sharesHeld,
         notes: result.notes,
@@ -1746,6 +1788,7 @@ export class AccountDetailsComponent {
         dividendTypeId: result.dividendTypeId,
         date: result.date,
         amount: result.amount,
+        fee: result.fee,
         perShare: result.perShare,
         sharesHeld: result.sharesHeld,
         notes: result.notes,
@@ -1814,6 +1857,7 @@ export class AccountDetailsComponent {
         type: result.type,
         date: result.date,
         amount: result.amount,
+        fee: result.fee,
         currency: result.currency,
         notes: result.notes,
       });
@@ -1842,6 +1886,7 @@ export class AccountDetailsComponent {
         type: result.type,
         date: result.date,
         amount: result.amount,
+        fee: result.fee,
         currency: result.currency,
         notes: result.notes,
       });

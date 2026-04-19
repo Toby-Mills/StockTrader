@@ -298,6 +298,25 @@ export class DividendsComponent {
     }).format(amount);
   }
 
+  netDividendAmount(dividend: Dividend): number {
+    return dividend.amount - (dividend.fee ?? 0);
+  }
+
+  dividendNotes(dividend: Dividend): string | undefined {
+    const fee = dividend.fee ?? 0;
+    const trimmedNotes = dividend.notes?.trim();
+    if (fee <= 0) {
+      return trimmedNotes || undefined;
+    }
+
+    const feeMessage = `Fee: ${this.formatMoney(fee, dividend.currency)}`;
+    if (!trimmedNotes) {
+      return feeMessage;
+    }
+
+    return `${feeMessage}. ${trimmedNotes}`;
+  }
+
   private async createDividend(accountId: string, result: DividendDialogResult): Promise<void> {
     if (this.isSaving) {
       return;
@@ -312,6 +331,7 @@ export class DividendsComponent {
         dividendTypeId: result.dividendTypeId,
         date: result.date,
         amount: result.amount,
+        fee: result.fee,
         perShare: result.perShare,
         sharesHeld: result.sharesHeld,
         notes: result.notes,
@@ -339,6 +359,7 @@ export class DividendsComponent {
         dividendTypeId: result.dividendTypeId,
         date: result.date,
         amount: result.amount,
+        fee: result.fee,
         perShare: result.perShare,
         sharesHeld: result.sharesHeld,
         notes: result.notes,

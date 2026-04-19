@@ -37,7 +37,7 @@ export class FinancialCalculationsService {
     for (const div of dividends) {
       const date = this.normalizeDate(div.date);
       if (!date) continue;
-      cashFlows.push({ date, amount: div.amount });
+      cashFlows.push({ date, amount: div.amount - (div.fee ?? 0) });
     }
 
     if (terminalValue > 0) {

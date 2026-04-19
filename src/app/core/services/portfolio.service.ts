@@ -54,7 +54,7 @@ export class PortfolioService {
     const transactionsBySymbol = new Map<string, Transaction[]>();
     const dividendsBySymbol = new Map<string, Dividend[]>();
     const totalDividendsBySymbol = dividends.reduce((acc, d) => {
-      acc[d.symbol] = (acc[d.symbol] ?? 0) + d.amount;
+      acc[d.symbol] = (acc[d.symbol] ?? 0) + (d.amount - (d.fee ?? 0));
       return acc;
     }, {} as Record<string, number>);
 
@@ -197,13 +197,17 @@ export class PortfolioService {
       }
 
       if (event.source === 'dividend') {
-        cashBalance += event.dividend.amount;
+        cashBalance += event.dividend.amount - (event.dividend.fee ?? 0);
         continue;
       }
 
-      cashBalance += event.cashEvent.type === 'deposit'
-        ? event.cashEvent.amount
-        : -event.cashEvent.amount;
+      const fee = event.cashEvent.fee ?? 0;
+      if (event.cashEvent.type === 'deposit') {
+        cashBalance += event.cashEvent.amount - fee;
+        continue;
+      }
+
+      cashBalance -= event.cashEvent.amount + fee;
     }
 
     return cashBalance;

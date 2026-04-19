@@ -1,5 +1,8 @@
 # StockTrader — Copilot Instructions
 
+## Standard Operating Procedures
+Do not attempt to run the application (using 'npm run start' or ng serve), as I already have the application running locally on port 4200.)
+You can use the build command, and I will execute it locally to verify that the build process works correctly. You can also run tests, but do not attempt to run the dev server or access localhost:4200, as I already have that running on my machine.
 ## Commands
 
 | Task | Command |
