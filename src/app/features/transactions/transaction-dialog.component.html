@@ -173,6 +173,11 @@
       <mat-error>Fees must be zero or more.</mat-error>
     </mat-form-field>
 
+    <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('notes')">
+      <mat-label>Notes (optional)</mat-label>
+      <input matInput maxlength="500" formControlName="notes" />
+    </mat-form-field>
+
     <div class="totals">
       @if (!isSwap) {
         <p><strong>Total Price:</strong> {{ totalPrice.toFixed(2) }} {{ accountCurrency }}</p>

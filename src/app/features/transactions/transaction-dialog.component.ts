@@ -35,6 +35,7 @@ export interface TransactionDialogResult {
   quantity: number;
   price: number;
   fees?: number;
+  notes?: string;
   currency: string;
   toSymbol?: string;
   toQuantity?: number;
@@ -115,6 +116,7 @@ export class TransactionDialogComponent {
       quantity: [transaction?.quantity ?? 1, [Validators.required, Validators.min(0)]],
       price: [transaction?.price ?? 0, [Validators.required, Validators.min(0)]],
       fees: [transaction?.fees ?? 0, [Validators.min(0)]],
+      notes: [transaction?.notes ?? '', [Validators.maxLength(500)]],
       toSymbol: [transaction?.toSymbol ?? '', [Validators.maxLength(20)]],
       toQuantity: [transaction?.toQuantity ?? 1, [Validators.min(0)]],
     });
@@ -352,6 +354,7 @@ export class TransactionDialogComponent {
         quantity: Number(value.quantity),
         price: 0,
         fees: Number(value.fees || 0),
+        notes: value.notes?.trim() || undefined,
         currency: this.accountCurrency,
         toSymbol: toSymbolTrimmed,
         toQuantity: Number(value.toQuantity),
@@ -380,6 +383,7 @@ export class TransactionDialogComponent {
       quantity: Number(value.quantity),
       price: Number(value.price),
       fees: Number(value.fees || 0),
+      notes: value.notes?.trim() || undefined,
       currency: this.accountCurrency,
     };
 
@@ -516,6 +520,7 @@ export class TransactionDialogComponent {
       quantity: number;
       price: number;
       fees: number;
+      notes: string;
     }> = {};
 
     this.importedFields.clear();
@@ -560,6 +565,11 @@ export class TransactionDialogComponent {
     if (prefill.fees !== undefined) {
       patch.fees = prefill.fees;
       this.importedFields.add('fees');
+    }
+
+    if (prefill.notes !== undefined) {
+      patch.notes = prefill.notes;
+      this.importedFields.add('notes');
     }
 
     this.form.patchValue(patch);
