@@ -36,5 +36,14 @@
 
   .account-field {
     min-width: auto;
+
+  /* Symbol chip styling in card */
+  mat-card-title {
+    display: flex;
+    align-items: center;
+    ::ng-deep app-symbol-chip {
+      flex: 0 0 auto;
+    }
+  }
   }
 }

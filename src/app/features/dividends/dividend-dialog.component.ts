@@ -1,4 +1,5 @@
-import { Component, Inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Inject, computed, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -8,7 +9,7 @@ import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, map, startWith } from 'rxjs';
 import { Dividend } from '../../core/models/dividend.model';
 import { DividendType } from '../../core/models/dividend-type.model';
 import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
@@ -38,6 +39,7 @@ export interface DividendDialogResult {
 @Component({
     standalone: true,
     selector: 'app-dividend-dialog',
+  changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
         ReactiveFormsModule,
         MatAutocompleteModule,
@@ -63,6 +65,27 @@ export class DividendDialogComponent {
   isSavingType = false;
   isCreatingSymbol = false;
   symbolMessage = '';
+  readonly symbolQuery = signal('');
+  readonly dividendTypeQuery = signal('');
+  readonly filteredSymbolsList = computed(() => {
+    const query = this.symbolQuery();
+    if (!query) {
+      return this.symbols;
+    }
+
+    return this.symbols.filter(sym =>
+      sym.symbol.toLowerCase().includes(query)
+      || sym.fullName.toLowerCase().includes(query)
+    );
+  });
+  readonly filteredDividendTypesList = computed(() => {
+    const query = this.dividendTypeQuery();
+    if (!query) {
+      return this.dividendTypes;
+    }
+
+    return this.dividendTypes.filter(type => type.name.toLowerCase().includes(query));
+  });
 
   constructor(
     private readonly fb: FormBuilder,
@@ -98,22 +121,26 @@ export class DividendDialogComponent {
       sharesHeld: [this.dialogData.dividend?.sharesHeld ?? 0, [Validators.min(0)]],
       notes: [this.dialogData.dividend?.notes ?? '', [Validators.maxLength(500)]],
     });
+
+    this.form.controls.symbol.valueChanges
+      .pipe(
+        startWith(this.form.controls.symbol.value),
+        map(value => value.trim().toLowerCase()),
+        takeUntilDestroyed(),
+      )
+      .subscribe(query => this.symbolQuery.set(query));
+
+    this.form.controls.dividendTypeName.valueChanges
+      .pipe(
+        startWith(this.form.controls.dividendTypeName.value),
+        map(value => value.trim().toLowerCase()),
+        takeUntilDestroyed(),
+      )
+      .subscribe(query => this.dividendTypeQuery.set(query));
   }
 
   get accountCurrency(): string {
     return this.dialogData.accountCurrency;
-  }
-
-  filteredSymbols(): TrackedSymbol[] {
-    const query = this.form.controls.symbol.value.trim().toLowerCase();
-    if (!query) {
-      return this.symbols;
-    }
-
-    return this.symbols.filter(sym => 
-      sym.symbol.toLowerCase().includes(query) || 
-      sym.fullName.toLowerCase().includes(query)
-    );
   }
 
   async openSymbolCreateOption(): Promise<void> {
@@ -146,17 +173,6 @@ export class DividendDialogComponent {
     } finally {
       this.isSavingType = false;
     }
-  }
-
-  filteredDividendTypes(): DividendType[] {
-    const control = this.form.controls.dividendTypeName;
-    const query = control.value.trim().toLowerCase();
-
-    if (!query || control.pristine) {
-      return this.dividendTypes;
-    }
-
-    return this.dividendTypes.filter(type => type.name.toLowerCase().includes(query));
   }
 
   async openCreateSymbolDialog(): Promise<void> {

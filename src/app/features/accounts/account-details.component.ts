@@ -28,6 +28,7 @@ import { AccountDeleteConfirmDialogComponent } from './account-delete-confirm-di
 import { DividendDialogComponent, DividendDialogResult } from '../dividends/dividend-dialog.component';
 import { SymbolDialogComponent, SymbolDialogResult } from '../symbols/symbol-dialog.component';
 import { TransactionDialogComponent, TransactionDialogResult } from '../transactions/transaction-dialog.component';
+import { SymbolComponent } from '../../shared/symbol-chip.component';
 
 interface CashLedgerRow {
   id: string;
@@ -36,6 +37,8 @@ interface CashLedgerRow {
   source: 'cash-event' | 'dividend' | 'transaction';
   sourceLabel: string;
   details: string;
+  symbol?: string;
+  toSymbol?: string;
   amount: number;
   currency: string;
   notes?: string;
@@ -69,6 +72,7 @@ interface ParsedCsvRow {
     MatIconModule,
     MatDialogModule,
     MatTabsModule,
+    SymbolComponent,
   ],
   templateUrl: './account-details.component.html',
   styleUrl: './account-details.component.scss',
@@ -222,13 +226,15 @@ export class AccountDetailsComponent {
     }
 
     for (const dividend of this.filteredDividends()) {
+      const fullName = this.symbolNameByCode().get(dividend.symbol.trim().toUpperCase()) ?? '';
       rows.push({
         id: `dividend-${dividend.id}`,
         date: dividend.date,
         createdAt: dividend.createdAt,
         source: 'dividend',
         sourceLabel: 'Dividend',
-        details: this.symbolLabel(dividend.symbol),
+        details: fullName,
+        symbol: dividend.symbol,
         amount: dividend.amount,
         currency: dividend.currency,
         notes: dividend.notes,
@@ -245,7 +251,9 @@ export class AccountDetailsComponent {
         createdAt: tx.createdAt,
         source: 'transaction',
         sourceLabel: this.transactionLabelForSelection(tx, symbol),
-        details: this.transactionDetailsForSelection(tx, symbol),
+        details: this.transactionQuantityDetailsForSelection(tx, symbol),
+        symbol: this.getSymbolForDisplay(tx, symbol),
+        toSymbol: tx.type === 'swap' && symbol === 'ALL' ? (tx.toSymbol ?? undefined) : undefined,
         amount,
         currency: tx.currency,
         notes: fees > 0 ? `Fees: ${this.formatNumber(fees)}` : undefined,
@@ -553,6 +561,26 @@ export class AccountDetailsComponent {
     return tx.symbol;
   }
 
+  getSymbolForDisplay(tx: Transaction, selectedSymbol: string): string {
+    if (tx.type !== 'swap') {
+      return tx.symbol;
+    }
+
+    if (selectedSymbol === 'ALL') {
+      return tx.symbol; // Return just the primary symbol for the chip
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      return tx.symbol;
+    }
+
+    if (this.isSwapInForSelectedSymbol(tx, selectedSymbol)) {
+      return tx.toSymbol ?? tx.symbol;
+    }
+
+    return tx.symbol;
+  }
+
   displayQuantityForSelection(tx: Transaction, selectedSymbol: string): string {
     if (tx.type !== 'swap') {
       return this.formatShareQuantity(tx.quantity);
@@ -707,6 +735,33 @@ export class AccountDetailsComponent {
     }
 
     return `${this.symbolLabel(tx.toSymbol ?? tx.symbol)} (${this.formatShareQuantity(tx.toQuantity ?? 0)})`;
+  }
+
+  transactionQuantityDetailsForSelection(tx: Transaction, selectedSymbol: string): string {
+    const fromName = this.symbolNameByCode().get(this.normalizeSymbol(tx.symbol)) ?? '';
+    const toName = this.symbolNameByCode().get(this.normalizeSymbol(tx.toSymbol)) ?? '';
+
+    if (tx.type !== 'swap') {
+      const quantity = this.formatShareQuantity(tx.quantity);
+      return fromName ? `${fromName} (${quantity})` : `(${quantity})`;
+    }
+
+    if (selectedSymbol === 'ALL') {
+      const fromQty = this.formatShareQuantity(tx.quantity);
+      const toQty = this.formatShareQuantity(tx.toQuantity ?? 0);
+      if (fromName && toName) {
+        return `${fromName} -> ${toName} (${fromQty} -> ${toQty})`;
+      }
+      return `(${fromQty} -> ${toQty})`;
+    }
+
+    if (this.isSwapOutForSelectedSymbol(tx, selectedSymbol)) {
+      const quantity = this.formatShareQuantity(tx.quantity);
+      return fromName ? `${fromName} (${quantity})` : `(${quantity})`;
+    }
+
+    const quantity = this.formatShareQuantity(tx.toQuantity ?? 0);
+    return toName ? `${toName} (${quantity})` : `(${quantity})`;
   }
 
   cashEventLabel(type: CashEventType): string {

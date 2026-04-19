@@ -81,8 +81,8 @@
       <mat-select formControlName="symbol" (selectionChange)="onSymbolSelectionChanged($event.value)">
         <mat-option value="__CREATE_NEW_SYMBOL__">+ Create new symbol...</mat-option>
         @for (symbol of symbols; track symbol.id) {
-          <mat-option [value]="symbol.symbol">
-            {{ symbol.symbol }} - {{ symbol.fullName }}
+          <mat-option [value]="symbol.symbol" class="symbol-option">
+            <span class="symbol-code">{{ symbol.symbol }}</span> • {{ symbol.fullName }}
           </mat-option>
         }
       </mat-select>
@@ -124,8 +124,8 @@
         <mat-select formControlName="toSymbol" (selectionChange)="onSymbolSelectionChanged($event.value)">
           <mat-option value="__CREATE_NEW_SYMBOL__">+ Create new symbol...</mat-option>
           @for (symbol of symbols; track symbol.id) {
-            <mat-option [value]="symbol.symbol">
-              {{ symbol.symbol }} - {{ symbol.fullName }}
+            <mat-option [value]="symbol.symbol" class="symbol-option">
+              <span class="symbol-code">{{ symbol.symbol }}</span> • {{ symbol.fullName }}
             </mat-option>
           }
         </mat-select>

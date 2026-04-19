@@ -13,6 +13,7 @@ import { SymbolCatalogService } from '../../core/services/symbol-catalog.service
 import { Account } from '../../core/models/account.model';
 import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
 import { SymbolDialogComponent, SymbolDialogResult } from './symbol-dialog.component';
+import { SymbolChipComponent } from '../../shared/symbol-chip.component';
 
 @Component({
   selector: 'app-symbols',
@@ -25,6 +26,7 @@ import { SymbolDialogComponent, SymbolDialogResult } from './symbol-dialog.compo
     MatSelectModule,
     MatIconModule,
     MatDialogModule,
+    SymbolChipComponent,
   ],
   templateUrl: './symbols.component.html',
   styleUrl: './symbols.component.scss',

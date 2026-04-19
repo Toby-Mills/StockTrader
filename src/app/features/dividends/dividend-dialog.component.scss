@@ -4,3 +4,21 @@
   gap: 1rem;
   min-width: min(32rem, 100%);
 }
+
+/* Symbol styling */
+.symbol-code {
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #1976d2;
+  padding: 0 4px;
+}
+
+.symbol-option {
+  .symbol-code {
+    background: rgba(25, 118, 210, 0.08);
+    border-radius: 3px;
+    padding: 2px 6px;
+  }
+}

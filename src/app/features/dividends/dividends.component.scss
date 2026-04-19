@@ -2,6 +2,15 @@
   display: block;
 }
 
+/* Symbol filter dropdown styling */
+.filter-symbol-code {
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #1976d2;
+}
+
 mat-card-content {
   display: grid;
   gap: 1rem;

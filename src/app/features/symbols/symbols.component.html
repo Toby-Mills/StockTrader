@@ -39,7 +39,9 @@
           @for (symbol of symbols(); track symbol.id) {
             <mat-card class="symbol-card" appearance="outlined">
               <mat-card-header>
-                <mat-card-title>{{ symbol.symbol }}</mat-card-title>
+                <mat-card-title>
+                  <app-symbol-chip [symbol]="symbol.symbol" />
+                </mat-card-title>
                 <mat-card-subtitle>{{ symbol.fullName }}</mat-card-subtitle>
               </mat-card-header>
               <mat-card-actions align="end">

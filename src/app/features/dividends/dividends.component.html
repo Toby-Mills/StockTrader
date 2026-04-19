@@ -30,7 +30,9 @@
           <mat-select [value]="selectedSymbol()" (valueChange)="onSymbolChanged($event)">
             <mat-option value="ALL">All symbols</mat-option>
             @for (symbol of symbols(); track symbol) {
-              <mat-option [value]="symbol">{{ symbolLabel(symbol) }}</mat-option>
+              <mat-option [value]="symbol" class="symbol-option">
+                {{ symbolLabel(symbol) }}
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -70,7 +72,7 @@
               @for (dividend of filteredDividends(); track dividend.id) {
                 <tr>
                   <td>{{ formatDate(dividend.date) }}</td>
-                  <td>{{ symbolLabel(dividend.symbol) }}</td>
+                  <td><app-symbol [symbol]="dividend.symbol"></app-symbol></td>
                   <td>{{ dividendTypeLabel(dividend) }}</td>
                   <td [class.cash-out]="dividend.amount < 0">
                     {{ formatMoney(dividend.amount, dividend.currency) }}

@@ -39,7 +39,9 @@
             <mat-select [value]="selectedSymbol()" (valueChange)="onSymbolChanged($event)">
               <mat-option value="ALL">All symbols</mat-option>
               @for (symbol of symbols(); track symbol) {
-                <mat-option [value]="symbol">{{ symbolLabel(symbol) }}</mat-option>
+                <mat-option [value]="symbol" class="symbol-option">
+                  {{ symbolLabel(symbol) }}
+                </mat-option>
               }
             </mat-select>
           </mat-form-field>
@@ -177,7 +179,15 @@
                       @for (tx of filteredTransactions(); track tx.id) {
                         <tr>
                           <td>{{ formatDate(tx.date) }}</td>
-                          <td>{{ displaySymbolForSelection(tx, selectedSymbol()) }}</td>
+                          <td class="symbol-cell">
+                            @if (tx.type === 'swap' && selectedSymbol() === 'ALL') {
+                              <app-symbol [symbol]="tx.symbol" />
+                              <span class="swap-arrow">→</span>
+                              <app-symbol [symbol]="tx.toSymbol ?? '-'" />
+                            } @else {
+                              <app-symbol [symbol]="getSymbolForDisplay(tx, selectedSymbol())" />
+                            }
+                          </td>
                           <td>
                             <span class="tx-type" [class.sell]="isTransactionOutflowForSelection(tx, selectedSymbol())">
                               {{ transactionLabelForSelection(tx, selectedSymbol()) }}
@@ -246,7 +256,7 @@
                       @for (dividend of filteredDividends(); track dividend.id) {
                         <tr>
                           <td>{{ formatDate(dividend.date) }}</td>
-                          <td>{{ symbolLabel(dividend.symbol) }}</td>
+                          <td><app-symbol [symbol]="dividend.symbol" /></td>
                           <td>{{ dividendTypeLabel(dividend) }}</td>
                           <td class="numeric-col" [class.cash-out]="dividend.amount < 0">
                             {{ formatNumber(dividend.amount) }}
@@ -369,7 +379,22 @@
                         <tr>
                           <td>{{ formatDate(row.date) }}</td>
                           <td>{{ row.sourceLabel }}</td>
-                          <td>{{ row.details }}</td>
+                          <td>
+                            @if (row.symbol) {
+                              <div class="cash-details-cell">
+                                <app-symbol [symbol]="row.symbol"></app-symbol>
+                                @if (row.toSymbol) {
+                                  <span class="swap-arrow">→</span>
+                                  <app-symbol [symbol]="row.toSymbol"></app-symbol>
+                                }
+                                @if (row.details) {
+                                  <span class="cash-details-text">{{ row.details }}</span>
+                                }
+                              </div>
+                            } @else {
+                              {{ row.details }}
+                            }
+                          </td>
                           <td class="numeric-col" [class.cash-out]="row.amount < 0">
                             {{ formatNumber(row.amount) }}
                           </td>

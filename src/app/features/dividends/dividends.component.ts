@@ -16,6 +16,7 @@ import { Dividend } from '../../core/models/dividend.model';
 import { DividendType } from '../../core/models/dividend-type.model';
 import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
 import { DividendDialogComponent, DividendDialogResult } from './dividend-dialog.component';
+import { SymbolComponent } from '../../shared/symbol-chip.component';
 
 @Component({
     standalone: true,
@@ -27,6 +28,7 @@ import { DividendDialogComponent, DividendDialogResult } from './dividend-dialog
         MatSelectModule,
         MatIconModule,
         MatDialogModule,
+      SymbolComponent,
     ],
     templateUrl: './dividends.component.html',
     styleUrl: './dividends.component.scss'
