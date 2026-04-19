@@ -15,6 +15,7 @@ import { SymbolCatalogService } from '../../core/services/symbol-catalog.service
 import { TransactionFormPrefillPayload } from '../../core/models/transaction-import.model';
 import { TransactionPdfImportError, TransactionPdfImportService } from '../../core/services/transaction-pdf-import.service';
 import { SymbolDialogComponent } from '../symbols/symbol-dialog.component';
+import { SymbolComponent } from '../../shared/symbol-chip.component';
 
 interface TransactionDialogData {
   accountId: string;
@@ -52,6 +53,7 @@ export interface TransactionDialogResult {
         MatInputModule,
         MatSelectModule,
         MatButtonModule,
+        SymbolComponent,
     ],
     templateUrl: './transaction-dialog.component.html',
     styleUrl: './transaction-dialog.component.scss'

@@ -2,13 +2,14 @@
   display: block;
 }
 
-/* Symbol filter dropdown styling */
-.filter-symbol-code {
-  font-family: 'Courier New', 'Lucida Console', monospace;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: #1976d2;
+.symbol-option-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.symbol-option-name {
+  color: rgba(0, 0, 0, 0.72);
 }
 
 mat-card-content {

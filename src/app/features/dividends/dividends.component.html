@@ -28,10 +28,27 @@
         <mat-form-field appearance="outline">
           <mat-label>Filter by Stock/Fund</mat-label>
           <mat-select [value]="selectedSymbol()" (valueChange)="onSymbolChanged($event)">
+            <mat-select-trigger>
+              @if (selectedSymbol() === 'ALL') {
+                <span>All symbols</span>
+              } @else {
+                <span class="symbol-option-content">
+                  <app-symbol [symbol]="selectedSymbol()" />
+                  @if (symbolNameByCode().get(selectedSymbol()); as fullName) {
+                    <span class="symbol-option-name">{{ fullName }}</span>
+                  }
+                </span>
+              }
+            </mat-select-trigger>
             <mat-option value="ALL">All symbols</mat-option>
             @for (symbol of symbols(); track symbol) {
               <mat-option [value]="symbol" class="symbol-option">
-                {{ symbolLabel(symbol) }}
+                <span class="symbol-option-content">
+                  <app-symbol [symbol]="symbol" />
+                  @if (symbolNameByCode().get(symbol); as fullName) {
+                    <span class="symbol-option-name">{{ fullName }}</span>
+                  }
+                </span>
               </mat-option>
             }
           </mat-select>

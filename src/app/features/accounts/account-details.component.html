@@ -37,10 +37,27 @@
           <mat-form-field appearance="outline">
             <mat-label>Filter by Stock/Fund</mat-label>
             <mat-select [value]="selectedSymbol()" (valueChange)="onSymbolChanged($event)">
+              <mat-select-trigger>
+                @if (selectedSymbol() === 'ALL') {
+                  <span>All symbols</span>
+                } @else {
+                  <span class="symbol-option-content">
+                    <app-symbol [symbol]="selectedSymbol()" />
+                    @if (symbolNameByCode().get(selectedSymbol()); as fullName) {
+                      <span class="symbol-option-name">{{ fullName }}</span>
+                    }
+                  </span>
+                }
+              </mat-select-trigger>
               <mat-option value="ALL">All symbols</mat-option>
               @for (symbol of symbols(); track symbol) {
                 <mat-option [value]="symbol" class="symbol-option">
-                  {{ symbolLabel(symbol) }}
+                  <span class="symbol-option-content">
+                    <app-symbol [symbol]="symbol" />
+                    @if (symbolNameByCode().get(symbol); as fullName) {
+                      <span class="symbol-option-name">{{ fullName }}</span>
+                    }
+                  </span>
                 </mat-option>
               }
             </mat-select>
@@ -59,7 +76,14 @@
           <section class="balance-sheet" aria-label="Symbol balance sheet summary">
             <header class="balance-sheet-header">
               <p class="balance-sheet-kicker">Symbol Balance Sheet</p>
-              <h2>{{ symbolLabel(summary.symbol) }}</h2>
+              <h2>
+                <span class="symbol-option-content">
+                  <app-symbol [symbol]="summary.symbol" />
+                  @if (symbolNameByCode().get(summary.symbol); as fullName) {
+                    <span class="symbol-option-name">{{ fullName }}</span>
+                  }
+                </span>
+              </h2>
             </header>
 
             <div class="balance-sheet-table" role="table" aria-label="Balance sheet values">

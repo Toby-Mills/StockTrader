@@ -126,6 +126,11 @@ mat-card-content {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
+  line-height: 1.35;
+}
+
+.balance-sheet-header .symbol-option-content {
+  flex-wrap: wrap;
 }
 
 .balance-sheet-kicker {
@@ -319,12 +324,14 @@ mat-card-content {
   font-size: 0.9rem;
 }
 
-.filter-symbol-code {
-  font-family: 'Courier New', 'Lucida Console', monospace;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: #1976d2;
+.symbol-option-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.symbol-option-name {
+  color: rgba(0, 0, 0, 0.72);
 }
 
 @media (max-width: 980px) {
