@@ -202,7 +202,7 @@ export class PortfolioService {
       }
 
       const fee = event.cashEvent.fee ?? 0;
-      if (event.cashEvent.type === 'deposit') {
+      if (event.cashEvent.type === 'deposit' || event.cashEvent.type === 'interest') {
         cashBalance += event.cashEvent.amount - fee;
         continue;
       }

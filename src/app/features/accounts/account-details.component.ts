@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,6 +8,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Account } from '../../core/models/account.model';
@@ -60,16 +62,62 @@ interface ParsedCsvRow {
   dividendValue?: number;
 }
 
+type InlineTransactionField = 'date' | 'symbol' | 'type' | 'quantity' | 'price' | 'fees' | 'notes';
+
+interface InlineTransactionEditingCell {
+  txId: string;
+  field: InlineTransactionField;
+}
+
+interface InlineTransactionDraft {
+  date: string;
+  symbol: string;
+  toSymbol: string;
+  type: TransactionType;
+  quantity: string;
+  toQuantity: string;
+  price: string;
+  fees: string;
+  notes: string;
+}
+
+type InlineDividendField = 'date' | 'symbol' | 'dividendType' | 'amount' | 'sharesHeld' | 'notes';
+
+interface InlineDividendEditingCell {
+  dividendId: string;
+  field: InlineDividendField;
+}
+
+interface InlineDividendDraft {
+  date: string;
+  symbol: string;
+  dividendTypeName: string;
+  amount: string;
+  fee: string;
+  perShare: string;
+  sharesHeld: string;
+  notes: string;
+}
+
+interface SymbolFilterOption {
+  symbol: string;
+  fullName: string;
+  providerGroup: string;
+  showDivider: boolean;
+}
+
 @Component({
   selector: 'app-account-details',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatCardModule,
     MatButtonModule,
     MatFormFieldModule,
     MatSelectModule,
     MatIconModule,
+    MatSnackBarModule,
     MatDialogModule,
     MatTabsModule,
     SymbolComponent,
@@ -105,6 +153,7 @@ export class AccountDetailsComponent {
   private readonly portfolioService = inject(PortfolioService);
   private readonly symbolCatalogService = inject(SymbolCatalogService);
   private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly accountId = signal<string | null>(null);
   readonly account = signal<Account | null>(null);
@@ -129,6 +178,38 @@ export class AccountDetailsComponent {
       ...this.dividends().map(div => div.symbol.toUpperCase()),
     ])].sort((a, b) => a.localeCompare(b))
   );
+
+  readonly symbolFilterOptions = computed<SymbolFilterOption[]>(() => {
+    const symbolNames = this.symbolNameByCode();
+    const options = this.symbols().map(symbol => {
+      const fullName = symbolNames.get(symbol) ?? '';
+      return {
+        symbol,
+        fullName,
+        providerGroup: this.providerGroupFromName(fullName),
+        showDivider: false,
+      };
+    });
+
+    options.sort((a, b) => {
+      const providerCompare = a.providerGroup.localeCompare(b.providerGroup);
+      if (providerCompare !== 0) {
+        return providerCompare;
+      }
+
+      const nameCompare = a.fullName.localeCompare(b.fullName);
+      if (nameCompare !== 0) {
+        return nameCompare;
+      }
+
+      return a.symbol.localeCompare(b.symbol);
+    });
+
+    return options.map((option, index, list) => ({
+      ...option,
+      showDivider: index > 0 && option.providerGroup !== list[index - 1].providerGroup,
+    }));
+  });
 
   readonly filteredTransactions = computed(() => {
     const symbol = this.selectedSymbol();
@@ -263,8 +344,32 @@ export class AccountDetailsComponent {
     return sortByDateAndCreatedAt(rows);
   });
 
+  readonly inlineEditingCell = signal<InlineTransactionEditingCell | null>(null);
+  readonly inlineEditingDividendCell = signal<InlineDividendEditingCell | null>(null);
+
   isSaving = false;
-  feedbackMessage = '';
+  private _feedbackMessage = '';
+  inlineEditDraft: InlineTransactionDraft = this.createEmptyInlineTransactionDraft();
+  inlineEditError = '';
+  inlineDividendEditDraft: InlineDividendDraft = this.createEmptyInlineDividendDraft();
+  inlineDividendEditError = '';
+
+  get feedbackMessage(): string {
+    return this._feedbackMessage;
+  }
+
+  set feedbackMessage(value: string) {
+    this._feedbackMessage = value;
+    if (!value) {
+      return;
+    }
+
+    this.snackBar.open(value, 'Dismiss', {
+      duration: 4000,
+      horizontalPosition: 'end',
+      verticalPosition: 'top',
+    });
+  }
 
   private debug(message: string, data?: unknown): void {
     if (data === undefined) {
@@ -481,12 +586,178 @@ export class AccountDetailsComponent {
   }
 
   onSymbolChanged(symbol: string): void {
+    this.cancelAllInlineEdits();
     this.selectedSymbol.set(symbol);
+  }
+
+  canInlineEditTransactionField(tx: Transaction, field: InlineTransactionField): boolean {
+    if (field === 'price') {
+      return tx.type !== 'swap';
+    }
+
+    if (field === 'type') {
+      return tx.type !== 'swap';
+    }
+
+    return true;
+  }
+
+  isInlineEditing(txId: string, field: InlineTransactionField): boolean {
+    const activeCell = this.inlineEditingCell();
+    return activeCell?.txId === txId && activeCell.field === field;
+  }
+
+  startInlineEdit(tx: Transaction, field: InlineTransactionField): void {
+    if (this.isSaving || !this.canInlineEditTransactionField(tx, field)) {
+      return;
+    }
+
+    this.cancelInlineDividendEdit();
+    this.inlineEditDraft = this.createInlineTransactionDraft(tx);
+    this.inlineEditError = '';
+    this.inlineEditingCell.set({ txId: tx.id, field });
+  }
+
+  cancelInlineEdit(): void {
+    this.inlineEditingCell.set(null);
+    this.inlineEditError = '';
+  }
+
+  canInlineEditDividendField(_dividend: Dividend, _field: InlineDividendField): boolean {
+    return true;
+  }
+
+  isInlineEditingDividend(dividendId: string, field: InlineDividendField): boolean {
+    const activeCell = this.inlineEditingDividendCell();
+    return activeCell?.dividendId === dividendId && activeCell.field === field;
+  }
+
+  startInlineDividendEdit(dividend: Dividend, field: InlineDividendField): void {
+    if (this.isSaving || !this.canInlineEditDividendField(dividend, field)) {
+      return;
+    }
+
+    this.cancelInlineEdit();
+    this.inlineDividendEditDraft = this.createInlineDividendDraft(dividend);
+    this.inlineDividendEditError = '';
+    this.inlineEditingDividendCell.set({ dividendId: dividend.id, field });
+  }
+
+  cancelInlineDividendEdit(): void {
+    this.inlineEditingDividendCell.set(null);
+    this.inlineDividendEditError = '';
+  }
+
+  cancelAllInlineEdits(): void {
+    this.cancelInlineEdit();
+    this.cancelInlineDividendEdit();
+  }
+
+  async saveInlineDividendEdit(dividend: Dividend): Promise<void> {
+    const activeCell = this.inlineEditingDividendCell();
+    const account = this.account();
+    if (!activeCell || activeCell.dividendId !== dividend.id || !account || this.isSaving) {
+      return;
+    }
+
+    const changes = await this.buildInlineDividendChanges(account.id, activeCell.field);
+    if (!changes) {
+      return;
+    }
+
+    this.isSaving = true;
+    this.feedbackMessage = '';
+    this.inlineDividendEditError = '';
+
+    try {
+      await this.dividendService.updateDividend(account.id, dividend.id, changes);
+      this.feedbackMessage = 'Dividend updated.';
+      this.cancelInlineDividendEdit();
+    } catch (error) {
+      const message = this.errorMessage(error, 'Could not update dividend');
+      this.inlineDividendEditError = message;
+      this.feedbackMessage = message;
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  onInlineDividendEditKeydown(event: KeyboardEvent, dividend: Dividend, field: InlineDividendField): void {
+    if (!this.isInlineEditingDividend(dividend.id, field)) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelInlineDividendEdit();
+      return;
+    }
+
+    if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement) && !event.shiftKey) {
+      event.preventDefault();
+      void this.saveInlineDividendEdit(dividend);
+    }
+  }
+
+  async saveInlineEdit(tx: Transaction): Promise<void> {
+    const activeCell = this.inlineEditingCell();
+    const account = this.account();
+    if (!activeCell || activeCell.txId !== tx.id || !account || this.isSaving) {
+      return;
+    }
+
+    const changes = this.buildInlineTransactionChanges(tx, activeCell.field);
+    if (!changes) {
+      return;
+    }
+
+    this.isSaving = true;
+    this.feedbackMessage = '';
+    this.inlineEditError = '';
+
+    try {
+      await this.transactionService.updateTransaction(account.id, tx.id, changes);
+      this.feedbackMessage = 'Transaction updated.';
+      this.cancelInlineEdit();
+    } catch (error) {
+      const message = this.errorMessage(error, 'Could not update transaction');
+      this.inlineEditError = message;
+      this.feedbackMessage = message;
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  onInlineEditKeydown(event: KeyboardEvent, tx: Transaction, field: InlineTransactionField): void {
+    if (!this.isInlineEditing(tx.id, field)) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelInlineEdit();
+      return;
+    }
+
+    if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement) && !event.shiftKey) {
+      event.preventDefault();
+      void this.saveInlineEdit(tx);
+    }
   }
 
   symbolLabel(symbol: string): string {
     const fullName = this.symbolNameByCode().get(symbol.toUpperCase());
     return fullName ? `${symbol} - ${fullName}` : symbol;
+  }
+
+  private providerGroupFromName(fullName: string): string {
+    const trimmed = fullName.trim();
+    if (!trimmed) {
+      return 'zzzz';
+    }
+
+    const firstWord = trimmed.split(/\s+/)[0] ?? '';
+    return firstWord.toLowerCase();
   }
 
   dividendTypeLabel(dividend: Dividend): string {
@@ -793,6 +1064,8 @@ export class AccountDetailsComponent {
         return 'Withdrawal';
       case 'fee':
         return 'Account Fee';
+      case 'interest':
+        return 'Interest on Cash';
       default:
         return type;
     }
@@ -806,6 +1079,8 @@ export class AccountDetailsComponent {
         return 'Cash withdrawal';
       case 'fee':
         return 'Account fee';
+      case 'interest':
+        return 'Interest on cash';
       default:
         return type;
     }
@@ -860,7 +1135,7 @@ export class AccountDetailsComponent {
 
   cashAmountSigned(event: CashEvent): number {
     const fee = event.fee ?? 0;
-    return event.type === 'deposit'
+    return event.type === 'deposit' || event.type === 'interest'
       ? event.amount - fee
       : -(event.amount + fee);
   }
@@ -904,6 +1179,8 @@ export class AccountDetailsComponent {
   }
 
   async openAddTransactionDialog(): Promise<void> {
+    this.cancelAllInlineEdits();
+
     const account = this.account();
     if (!account) {
       return;
@@ -955,6 +1232,8 @@ export class AccountDetailsComponent {
   }
 
   async openEditTransactionDialog(tx: Transaction): Promise<void> {
+    this.cancelAllInlineEdits();
+
     const account = this.account();
     if (!account) {
       return;
@@ -1051,6 +1330,8 @@ export class AccountDetailsComponent {
   }
 
   async openAddDividendDialog(): Promise<void> {
+    this.cancelAllInlineEdits();
+
     const account = this.account();
     if (!account) {
       return;
@@ -1154,6 +1435,8 @@ export class AccountDetailsComponent {
   }
 
   async openEditDividendDialog(dividend: Dividend): Promise<void> {
+    this.cancelAllInlineEdits();
+
     const account = this.account();
     if (!account) {
       return;
@@ -1781,6 +2064,308 @@ export class AccountDetailsComponent {
     } finally {
       this.isSaving = false;
     }
+  }
+
+  private createEmptyInlineTransactionDraft(): InlineTransactionDraft {
+    return {
+      date: '',
+      symbol: '',
+      toSymbol: '',
+      type: 'buy',
+      quantity: '',
+      toQuantity: '',
+      price: '',
+      fees: '',
+      notes: '',
+    };
+  }
+
+  private createEmptyInlineDividendDraft(): InlineDividendDraft {
+    return {
+      date: '',
+      symbol: '',
+      dividendTypeName: '',
+      amount: '',
+      fee: '',
+      perShare: '',
+      sharesHeld: '',
+      notes: '',
+    };
+  }
+
+  private createInlineTransactionDraft(tx: Transaction): InlineTransactionDraft {
+    return {
+      date: this.toDateInputValue(tx.date),
+      symbol: tx.symbol,
+      toSymbol: tx.toSymbol ?? '',
+      type: tx.type,
+      quantity: String(tx.quantity),
+      toQuantity: tx.toQuantity == null ? '' : String(tx.toQuantity),
+      price: String(tx.price),
+      fees: String(tx.fees ?? 0),
+      notes: tx.notes ?? '',
+    };
+  }
+
+  private createInlineDividendDraft(dividend: Dividend): InlineDividendDraft {
+    return {
+      date: this.toDateInputValue(dividend.date),
+      symbol: dividend.symbol,
+      dividendTypeName: this.dividendTypeLabel(dividend),
+      amount: String(dividend.amount),
+      fee: String(dividend.fee ?? 0),
+      perShare: dividend.perShare == null ? '' : String(dividend.perShare),
+      sharesHeld: dividend.sharesHeld == null ? '' : String(dividend.sharesHeld),
+      notes: dividend.notes ?? '',
+    };
+  }
+
+  private buildInlineTransactionChanges(tx: Transaction, field: InlineTransactionField): Partial<Transaction> | null {
+    switch (field) {
+      case 'date': {
+        const date = this.parseInlineDate(this.inlineEditDraft.date);
+        if (!date) {
+          this.inlineEditError = 'Enter a valid date.';
+          return null;
+        }
+        return { date };
+      }
+
+      case 'symbol': {
+        const symbol = this.inlineEditDraft.symbol.trim().toUpperCase();
+        if (!symbol) {
+          this.inlineEditError = 'Enter a symbol.';
+          return null;
+        }
+
+        if (tx.type !== 'swap') {
+          return { symbol };
+        }
+
+        const toSymbol = this.inlineEditDraft.toSymbol.trim().toUpperCase();
+        if (!toSymbol) {
+          this.inlineEditError = 'Enter the destination symbol for this swap.';
+          return null;
+        }
+
+        return { symbol, toSymbol };
+      }
+
+      case 'type': {
+        if (tx.type === 'swap') {
+          this.inlineEditError = 'Use the dialog for swap type changes.';
+          return null;
+        }
+
+        if (this.inlineEditDraft.type === 'swap') {
+          this.inlineEditError = 'Use the dialog to convert a purchase or sale into a swap.';
+          return null;
+        }
+
+        return { type: this.inlineEditDraft.type };
+      }
+
+      case 'quantity': {
+        const quantity = this.parseInlineNumber(this.inlineEditDraft.quantity, tx.type === 'swap' ? 0 : Number.EPSILON);
+        if (quantity == null) {
+          this.inlineEditError = tx.type === 'swap'
+            ? 'Enter a quantity of zero or more.'
+            : 'Enter a quantity greater than zero.';
+          return null;
+        }
+
+        if (tx.type !== 'swap') {
+          return { quantity };
+        }
+
+        const toQuantity = this.parseInlineNumber(this.inlineEditDraft.toQuantity, 0);
+        if (toQuantity == null) {
+          this.inlineEditError = 'Enter the destination quantity for this swap.';
+          return null;
+        }
+
+        return { quantity, toQuantity };
+      }
+
+      case 'price': {
+        if (tx.type === 'swap') {
+          this.inlineEditError = 'Swap rows do not have a price.';
+          return null;
+        }
+
+        const price = this.parseInlineNumber(this.inlineEditDraft.price, 0);
+        if (price == null) {
+          this.inlineEditError = 'Enter a price of zero or more.';
+          return null;
+        }
+
+        return { price };
+      }
+
+      case 'fees': {
+        const fees = this.parseInlineNumber(this.inlineEditDraft.fees, 0);
+        if (fees == null) {
+          this.inlineEditError = 'Enter fees of zero or more.';
+          return null;
+        }
+
+        return { fees };
+      }
+
+      case 'notes':
+        return { notes: this.inlineEditDraft.notes.trim() || undefined };
+
+      default:
+        return null;
+    }
+  }
+
+  private async buildInlineDividendChanges(accountId: string, field: InlineDividendField): Promise<Partial<Dividend> | null> {
+    switch (field) {
+      case 'date': {
+        const date = this.parseInlineDate(this.inlineDividendEditDraft.date);
+        if (!date) {
+          this.inlineDividendEditError = 'Enter a valid date.';
+          return null;
+        }
+
+        return { date };
+      }
+
+      case 'symbol': {
+        const symbol = this.inlineDividendEditDraft.symbol.trim().toUpperCase();
+        if (!symbol) {
+          this.inlineDividendEditError = 'Enter a symbol.';
+          return null;
+        }
+
+        return { symbol };
+      }
+
+      case 'dividendType': {
+        const dividendTypeName = this.inlineDividendEditDraft.dividendTypeName.trim();
+        if (!dividendTypeName) {
+          this.inlineDividendEditError = 'Enter a dividend type.';
+          return null;
+        }
+
+        const dividendTypeId = await this.resolveInlineDividendTypeId(accountId, dividendTypeName);
+        return { dividendTypeId };
+      }
+
+      case 'amount': {
+        const amount = this.parseInlineNumber(this.inlineDividendEditDraft.amount, null);
+        if (amount == null) {
+          this.inlineDividendEditError = 'Enter a valid gross amount.';
+          return null;
+        }
+
+        const fee = this.parseInlineNumber(this.inlineDividendEditDraft.fee, 0);
+        if (fee == null) {
+          this.inlineDividendEditError = 'Enter a fee of zero or more.';
+          return null;
+        }
+
+        const perShare = this.inlineDividendEditDraft.perShare.trim();
+        if (!perShare) {
+          return { amount, fee, perShare: undefined };
+        }
+
+        const parsedPerShare = this.parseInlineNumber(perShare, null);
+        if (parsedPerShare == null) {
+          this.inlineDividendEditError = 'Enter a valid per-share amount.';
+          return null;
+        }
+
+        return { amount, fee, perShare: parsedPerShare };
+      }
+
+      case 'sharesHeld': {
+        const sharesHeld = this.inlineDividendEditDraft.sharesHeld.trim();
+        if (!sharesHeld) {
+          return { sharesHeld: undefined };
+        }
+
+        const parsedSharesHeld = this.parseInlineNumber(sharesHeld, 0);
+        if (parsedSharesHeld == null) {
+          this.inlineDividendEditError = 'Enter shares held of zero or more.';
+          return null;
+        }
+
+        return { sharesHeld: parsedSharesHeld };
+      }
+
+      case 'notes':
+        return { notes: this.inlineDividendEditDraft.notes.trim() || undefined };
+
+      default:
+        return null;
+    }
+  }
+
+  private async resolveInlineDividendTypeId(accountId: string, typeNameInput: string): Promise<string> {
+    const typeName = typeNameInput.trim();
+    const existing = this.findDividendTypeByName(typeName);
+    if (existing) {
+      return existing.id;
+    }
+
+    return this.dividendTypeService.addDividendType(accountId, {
+      name: typeName,
+      description: undefined,
+    });
+  }
+
+  private findDividendTypeByName(name: string): DividendType | undefined {
+    const normalized = name.trim().toLowerCase();
+    return this.dividendTypes().find(type => type.name.trim().toLowerCase() === normalized);
+  }
+
+  private parseInlineNumber(rawValue: string, minValue: number | null): number | null {
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+
+    if (minValue != null && parsed < minValue) {
+      return null;
+    }
+
+    return parsed;
+  }
+
+  private toDateInputValue(rawDate: unknown): string {
+    const date = this.toDate(rawDate);
+    if (!date) {
+      return '';
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private parseInlineDate(value: string): Date | null {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+    if (!match) {
+      return null;
+    }
+
+    const year = Number(match[1]);
+    const monthIndex = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const date = new Date(year, monthIndex, day, 12, 0, 0, 0);
+
+    if (
+      date.getFullYear() !== year
+      || date.getMonth() !== monthIndex
+      || date.getDate() !== day
+    ) {
+      return null;
+    }
+
+    return date;
   }
 
   private async createDividend(accountId: string, result: DividendDialogResult): Promise<void> {

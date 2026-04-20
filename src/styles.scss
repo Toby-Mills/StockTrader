@@ -22,3 +22,188 @@ html, body {
   margin: 0;
   font-family: Roboto, 'Helvetica Neue', sans-serif;
 }
+
+app-account-details {
+  .editable-cell {
+    position: relative;
+    overflow: visible;
+  }
+
+  .editable-cell.inline-editing {
+    white-space: nowrap;
+  }
+
+  .cell-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 2rem;
+  }
+
+  .cell-display-right {
+    justify-content: flex-end;
+  }
+
+  .cell-display-details {
+    align-items: flex-start;
+  }
+
+  .cell-display-value {
+    min-width: 0;
+  }
+
+  .cell-display-notes {
+    align-items: flex-start;
+  }
+
+  .cell-display-stack {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .cell-display-stack-end {
+    justify-items: end;
+  }
+
+  .cell-edit-trigger,
+  .cell-editor-actions button {
+    width: 1.9rem;
+    height: 1.9rem;
+    flex-shrink: 0;
+  }
+
+  .cell-edit-trigger {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+
+  .editable-cell:hover .cell-edit-trigger,
+  .editable-cell:focus-within .cell-edit-trigger {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .cell-edit-trigger mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .cell-editor {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+    position: absolute;
+    top: 50%;
+    left: 0.35rem;
+    z-index: 20;
+    transform: translateY(-50%);
+    min-width: max(100%, 12rem);
+    max-width: min(32rem, calc(100vw - 4rem));
+    padding: 0.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  }
+
+  .cell-editor-singleline {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .numeric-col.editable-cell.inline-editing .cell-editor {
+    left: auto;
+    right: 0.35rem;
+  }
+
+  .notes-cell.inline-editing .cell-editor {
+    top: 0.35rem;
+    left: 0.35rem;
+    transform: none;
+    min-width: max(100%, 18rem);
+    max-width: min(30rem, calc(100vw - 4rem));
+  }
+
+  .symbol-cell.inline-editing .cell-editor {
+    min-width: max(100%, 14rem);
+  }
+
+  .div-table .numeric-col.editable-cell.inline-editing .cell-editor {
+    min-width: max(100%, 14rem);
+  }
+
+  .dividend-amount-editor {
+    min-width: max(100%, 16rem);
+  }
+
+  .cell-editor-actions,
+  .inline-stack {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .cell-editor-actions {
+    justify-content: flex-end;
+  }
+
+  .inline-stack {
+    justify-content: flex-end;
+  }
+
+  .inline-stack-symbols {
+    justify-content: flex-start;
+  }
+
+  .inline-stack-vertical {
+    display: grid;
+    gap: 0.35rem;
+    justify-items: stretch;
+  }
+
+  .inline-input,
+  .inline-select,
+  .inline-textarea {
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    border-radius: 6px;
+    padding: 0.4rem 0.55rem;
+    font: inherit;
+    color: inherit;
+    background: #fff;
+  }
+
+  .inline-input:focus,
+  .inline-select:focus,
+  .inline-textarea:focus {
+    outline: 2px solid rgba(63, 81, 181, 0.2);
+    border-color: rgba(63, 81, 181, 0.5);
+  }
+
+  .inline-input-number {
+    min-width: 7.5rem;
+    text-align: right;
+  }
+
+  .inline-input-symbol {
+    min-width: 5.5rem;
+    text-transform: uppercase;
+  }
+
+  .inline-textarea {
+    resize: vertical;
+    min-height: 4.75rem;
+  }
+
+  .inline-edit-error {
+    grid-column: 1 / -1;
+    color: #8b1d1d;
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+}

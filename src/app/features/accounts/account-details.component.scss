@@ -336,6 +336,12 @@ mat-card-content {
   color: rgba(0, 0, 0, 0.72);
 }
 
+:host ::ng-deep .symbol-filter-panel .mat-mdc-option.provider-divider {
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  margin-top: 0.2rem;
+  padding-top: 0.45rem;
+}
+
 @media (max-width: 980px) {
   .toolbar-row {
     grid-template-columns: 1fr;

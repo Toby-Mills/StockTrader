@@ -1,4 +1,4 @@
-export type CashEventType = 'deposit' | 'withdrawal' | 'fee';
+export type CashEventType = 'deposit' | 'withdrawal' | 'fee' | 'interest';
 
 export interface CashEvent {
   id: string;
