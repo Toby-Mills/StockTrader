@@ -59,7 +59,7 @@ mat-card-content {
 
 .toolbar-row {
   display: grid;
-  grid-template-columns: minmax(220px, 320px) auto;
+  grid-template-columns: minmax(220px, 320px) minmax(160px, 200px) auto;
   gap: 0.75rem;
   align-items: center;
 }

@@ -1,0 +1,865 @@
+<!-- Conditional content rendering based on selectedContentType -->
+<ng-container [ngSwitch]="selectedContentType()">
+  <!-- Transactions View -->
+  <ng-container *ngSwitchCase="'transactions'">
+    <div class="tab-content">
+      <div class="tab-actions">
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          (click)="openAddTransactionDialog()"
+          [disabled]="isSaving"
+          class="add-button"
+        >
+          <mat-icon>swap_horiz</mat-icon>
+          Add Transaction
+        </button>
+
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="openCsvImportPicker(csvImportInput)"
+          [disabled]="isSaving"
+          class="add-button"
+        >
+          <mat-icon>upload_file</mat-icon>
+          Import CSV
+        </button>
+
+        <input
+          #csvImportInput
+          type="file"
+          accept=".csv,text/csv"
+          class="hidden-file-input"
+          (change)="onCsvFileSelected($event)"
+        />
+      </div>
+
+      @if (filteredTransactions().length === 0) {
+        <p class="empty-state">
+          No transactions found for the selected filter.
+        </p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tx-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Symbol</th>
+                <th>Type</th>
+                <th class="numeric-col">Shares</th>
+                <th class="numeric-col">Price</th>
+                <th class="numeric-col">Total Price</th>
+                <th class="numeric-col">Fees</th>
+                <th class="numeric-col">Total Cost</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (tx of filteredTransactions(); track tx.id) {
+                <tr>
+                  <td class="editable-cell" [class.inline-editing]="isInlineEditing(tx.id, 'date')">
+                    @if (isInlineEditing(tx.id, 'date')) {
+                      <div class="cell-editor cell-editor-singleline">
+                        <input
+                          class="inline-input"
+                          type="date"
+                          [(ngModel)]="inlineEditDraft.date"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keydown)="onInlineEditKeydown($event, tx, 'date')"
+                          [disabled]="isSaving"
+                        />
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineEdit(tx)" [disabled]="isSaving" aria-label="Save date change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineEdit()" [disabled]="isSaving" aria-label="Cancel date change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineEditError) {
+                          <div class="inline-edit-error">{{ inlineEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display">
+                        <span>{{ formatDate(tx.date) }}</span>
+                        @if (canInlineEditTransactionField(tx, 'date')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineEdit(tx, 'date')" [disabled]="isSaving" aria-label="Edit date">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="symbol-cell editable-cell" [class.inline-editing]="isInlineEditing(tx.id, 'symbol')">
+                    @if (isInlineEditing(tx.id, 'symbol')) {
+                      <div class="cell-editor">
+                        <div class="inline-stack inline-stack-symbols">
+                          <input
+                            class="inline-input inline-input-symbol"
+                            type="text"
+                            maxlength="20"
+                            placeholder="From"
+                            [(ngModel)]="inlineEditDraft.symbol"
+                            [ngModelOptions]="{ standalone: true }"
+                            (keydown)="onInlineEditKeydown($event, tx, 'symbol')"
+                            [disabled]="isSaving"
+                          />
+                          @if (tx.type === 'swap') {
+                            <span class="swap-arrow">→</span>
+                            <input
+                              class="inline-input inline-input-symbol"
+                              type="text"
+                              maxlength="20"
+                              placeholder="To"
+                              [(ngModel)]="inlineEditDraft.toSymbol"
+                              [ngModelOptions]="{ standalone: true }"
+                              (keydown)="onInlineEditKeydown($event, tx, 'symbol')"
+                              [disabled]="isSaving"
+                            />
+                          }
+                        </div>
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineEdit(tx)" [disabled]="isSaving" aria-label="Save symbol change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineEdit()" [disabled]="isSaving" aria-label="Cancel symbol change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineEditError) {
+                          <div class="inline-edit-error">{{ inlineEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display">
+                        <span class="cell-display-value symbol-cell">
+                          @if (tx.type === 'swap' && (selectedSymbol() === 'ALL' || isStockSplitForSelectedSymbol(tx, selectedSymbol()))) {
+                            <app-symbol [symbol]="tx.symbol" />
+                            <span class="swap-arrow">→</span>
+                            <app-symbol [symbol]="tx.toSymbol ?? '-'" />
+                          } @else {
+                            <app-symbol [symbol]="getSymbolForDisplay(tx, selectedSymbol())" />
+                          }
+                        </span>
+                        @if (canInlineEditTransactionField(tx, 'symbol')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineEdit(tx, 'symbol')" [disabled]="isSaving" aria-label="Edit symbol">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="editable-cell" [class.inline-editing]="isInlineEditing(tx.id, 'type')">
+                    @if (isInlineEditing(tx.id, 'type')) {
+                      <div class="cell-editor cell-editor-singleline">
+                        <select
+                          class="inline-select"
+                          [(ngModel)]="inlineEditDraft.type"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keydown)="onInlineEditKeydown($event, tx, 'type')"
+                          [disabled]="isSaving"
+                        >
+                          <option value="buy">Purchase</option>
+                          <option value="sell">Sale</option>
+                        </select>
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineEdit(tx)" [disabled]="isSaving" aria-label="Save type change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineEdit()" [disabled]="isSaving" aria-label="Cancel type change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineEditError) {
+                          <div class="inline-edit-error">{{ inlineEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display">
+                        <span class="tx-type" [class.sell]="isTransactionOutflowForSelection(tx, selectedSymbol())">
+                          {{ transactionLabelForSelection(tx, selectedSymbol()) }}
+                        </span>
+                        @if (canInlineEditTransactionField(tx, 'type')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineEdit(tx, 'type')" [disabled]="isSaving" aria-label="Edit type">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="numeric-col editable-cell" [class.inline-editing]="isInlineEditing(tx.id, 'quantity')">
+                    @if (isInlineEditing(tx.id, 'quantity')) {
+                      <div class="cell-editor">
+                        <div class="inline-stack" [class.inline-stack-symbols]="tx.type === 'swap'">
+                          <input
+                            class="inline-input inline-input-number"
+                            type="number"
+                            min="0"
+                            step="0.000001"
+                            placeholder="Qty"
+                            [(ngModel)]="inlineEditDraft.quantity"
+                            [ngModelOptions]="{ standalone: true }"
+                            (keydown)="onInlineEditKeydown($event, tx, 'quantity')"
+                            [disabled]="isSaving"
+                          />
+                          @if (tx.type === 'swap') {
+                            <span class="swap-arrow">→</span>
+                            <input
+                              class="inline-input inline-input-number"
+                              type="number"
+                              min="0"
+                              step="0.000001"
+                              placeholder="To qty"
+                              [(ngModel)]="inlineEditDraft.toQuantity"
+                              [ngModelOptions]="{ standalone: true }"
+                              (keydown)="onInlineEditKeydown($event, tx, 'quantity')"
+                              [disabled]="isSaving"
+                            />
+                          }
+                        </div>
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineEdit(tx)" [disabled]="isSaving" aria-label="Save quantity change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineEdit()" [disabled]="isSaving" aria-label="Cancel quantity change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineEditError) {
+                          <div class="inline-edit-error">{{ inlineEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display cell-display-right">
+                        <span>{{ displayQuantityForSelection(tx, selectedSymbol()) }}</span>
+                        @if (canInlineEditTransactionField(tx, 'quantity')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineEdit(tx, 'quantity')" [disabled]="isSaving" aria-label="Edit quantity">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="numeric-col editable-cell" [class.inline-editing]="isInlineEditing(tx.id, 'price')">
+                    @if (isInlineEditing(tx.id, 'price')) {
+                      <div class="cell-editor cell-editor-singleline">
+                        <input
+                          class="inline-input inline-input-number"
+                          type="number"
+                          min="0"
+                          step="0.0001"
+                          [(ngModel)]="inlineEditDraft.price"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keydown)="onInlineEditKeydown($event, tx, 'price')"
+                          [disabled]="isSaving"
+                        />
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineEdit(tx)" [disabled]="isSaving" aria-label="Save price change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineEdit()" [disabled]="isSaving" aria-label="Cancel price change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineEditError) {
+                          <div class="inline-edit-error">{{ inlineEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display cell-display-right">
+                        <span>{{ displayPriceForSelection(tx) == null ? '-' : formatNumber(displayPriceForSelection(tx) ?? 0) }}</span>
+                        @if (canInlineEditTransactionField(tx, 'price')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineEdit(tx, 'price')" [disabled]="isSaving" aria-label="Edit price">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="numeric-col">{{ displayTotalPriceForSelection(tx) == null ? '-' : formatNumber(displayTotalPriceForSelection(tx) ?? 0) }}</td>
+                  <td class="numeric-col editable-cell" [class.inline-editing]="isInlineEditing(tx.id, 'fees')">
+                    @if (isInlineEditing(tx.id, 'fees')) {
+                      <div class="cell-editor cell-editor-singleline">
+                        <input
+                          class="inline-input inline-input-number"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          [(ngModel)]="inlineEditDraft.fees"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keydown)="onInlineEditKeydown($event, tx, 'fees')"
+                          [disabled]="isSaving"
+                        />
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineEdit(tx)" [disabled]="isSaving" aria-label="Save fees change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineEdit()" [disabled]="isSaving" aria-label="Cancel fees change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineEditError) {
+                          <div class="inline-edit-error">{{ inlineEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display cell-display-right">
+                        <span>{{ formatNumber(tx.fees ?? 0) }}</span>
+                        @if (canInlineEditTransactionField(tx, 'fees')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineEdit(tx, 'fees')" [disabled]="isSaving" aria-label="Edit fees">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="numeric-col">{{ formatNumber(displayTotalCostForSelection(tx, selectedSymbol())) }}</td>
+                  <td class="notes-cell editable-cell" [class.inline-editing]="isInlineEditing(tx.id, 'notes')">
+                    @if (isInlineEditing(tx.id, 'notes')) {
+                      <div class="cell-editor">
+                        <textarea
+                          class="inline-textarea"
+                          rows="3"
+                          [(ngModel)]="inlineEditDraft.notes"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keydown)="onInlineEditKeydown($event, tx, 'notes')"
+                          [disabled]="isSaving"
+                        ></textarea>
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineEdit(tx)" [disabled]="isSaving" aria-label="Save notes change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineEdit()" [disabled]="isSaving" aria-label="Cancel notes change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineEditError) {
+                          <div class="inline-edit-error">{{ inlineEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display cell-display-notes">
+                        <span>{{ tx.notes?.trim() || '-' }}</span>
+                        @if (canInlineEditTransactionField(tx, 'notes')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineEdit(tx, 'notes')" [disabled]="isSaving" aria-label="Edit notes">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="actions-cell">
+                    <button mat-button type="button" (click)="openEditTransactionDialog(tx)" [disabled]="isSaving">
+                      Edit
+                    </button>
+                    <button mat-button type="button" (click)="deleteTransaction(tx)" [disabled]="isSaving">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </ng-container>
+
+  <!-- Dividends View -->
+  <ng-container *ngSwitchCase="'dividends'">
+    <div class="tab-content">
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        (click)="openAddDividendDialog()"
+        [disabled]="isSaving"
+        class="add-button"
+      >
+        <mat-icon>paid</mat-icon>
+        Add Dividend
+      </button>
+
+      @if (filteredDividends().length === 0) {
+        <p class="empty-state">No dividends found for the selected filter.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="div-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Symbol</th>
+                <th>Type</th>
+                <th class="numeric-col">Amount</th>
+                <th class="numeric-col">Shares Held</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (dividend of filteredDividends(); track dividend.id) {
+                <tr>
+                  <td class="editable-cell" [class.inline-editing]="isInlineEditingDividend(dividend.id, 'date')">
+                    @if (isInlineEditingDividend(dividend.id, 'date')) {
+                      <div class="cell-editor cell-editor-singleline">
+                        <input
+                          class="inline-input"
+                          type="date"
+                          [(ngModel)]="inlineDividendEditDraft.date"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keydown)="onInlineDividendEditKeydown($event, dividend, 'date')"
+                          [disabled]="isSaving"
+                        />
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineDividendEdit(dividend)" [disabled]="isSaving" aria-label="Save dividend date change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineDividendEdit()" [disabled]="isSaving" aria-label="Cancel dividend date change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineDividendEditError) {
+                          <div class="inline-edit-error">{{ inlineDividendEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display">
+                        <span>{{ formatDate(dividend.date) }}</span>
+                        @if (canInlineEditDividendField(dividend, 'date')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineDividendEdit(dividend, 'date')" [disabled]="isSaving" aria-label="Edit dividend date">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="symbol-cell editable-cell" [class.inline-editing]="isInlineEditingDividend(dividend.id, 'symbol')">
+                    @if (isInlineEditingDividend(dividend.id, 'symbol')) {
+                      <div class="cell-editor cell-editor-singleline">
+                        <input
+                          class="inline-input inline-input-symbol"
+                          type="text"
+                          maxlength="20"
+                          [(ngModel)]="inlineDividendEditDraft.symbol"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keydown)="onInlineDividendEditKeydown($event, dividend, 'symbol')"
+                          [disabled]="isSaving"
+                        />
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineDividendEdit(dividend)" [disabled]="isSaving" aria-label="Save dividend symbol change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineDividendEdit()" [disabled]="isSaving" aria-label="Cancel dividend symbol change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineDividendEditError) {
+                          <div class="inline-edit-error">{{ inlineDividendEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display">
+                        <span class="cell-display-value symbol-cell">
+                          <app-symbol [symbol]="dividend.symbol" />
+                        </span>
+                        @if (canInlineEditDividendField(dividend, 'symbol')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineDividendEdit(dividend, 'symbol')" [disabled]="isSaving" aria-label="Edit dividend symbol">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="editable-cell" [class.inline-editing]="isInlineEditingDividend(dividend.id, 'dividendType')">
+                    @if (isInlineEditingDividend(dividend.id, 'dividendType')) {
+                      <div class="cell-editor cell-editor-singleline">
+                        <input
+                          class="inline-input"
+                          type="text"
+                          [(ngModel)]="inlineDividendEditDraft.dividendTypeName"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keydown)="onInlineDividendEditKeydown($event, dividend, 'dividendType')"
+                          [disabled]="isSaving"
+                        />
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineDividendEdit(dividend)" [disabled]="isSaving" aria-label="Save dividend type change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineDividendEdit()" [disabled]="isSaving" aria-label="Cancel dividend type change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineDividendEditError) {
+                          <div class="inline-edit-error">{{ inlineDividendEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display">
+                        <span>{{ dividendTypeLabel(dividend) }}</span>
+                        @if (canInlineEditDividendField(dividend, 'dividendType')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineDividendEdit(dividend, 'dividendType')" [disabled]="isSaving" aria-label="Edit dividend type">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="numeric-col editable-cell" [class.inline-editing]="isInlineEditingDividend(dividend.id, 'amount')" [class.cash-out]="netDividendAmount(dividend) < 0">
+                    @if (isInlineEditingDividend(dividend.id, 'amount')) {
+                      <div class="cell-editor dividend-amount-editor">
+                        <div class="inline-stack inline-stack-vertical">
+                          <input
+                            class="inline-input inline-input-number"
+                            type="number"
+                            step="0.01"
+                            placeholder="Gross amount"
+                            [(ngModel)]="inlineDividendEditDraft.amount"
+                            [ngModelOptions]="{ standalone: true }"
+                            (keydown)="onInlineDividendEditKeydown($event, dividend, 'amount')"
+                            [disabled]="isSaving"
+                          />
+                          <input
+                            class="inline-input inline-input-number"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Fee"
+                            [(ngModel)]="inlineDividendEditDraft.fee"
+                            [ngModelOptions]="{ standalone: true }"
+                            (keydown)="onInlineDividendEditKeydown($event, dividend, 'amount')"
+                            [disabled]="isSaving"
+                          />
+                          <input
+                            class="inline-input inline-input-number"
+                            type="number"
+                            step="0.01"
+                            placeholder="Per share"
+                            [(ngModel)]="inlineDividendEditDraft.perShare"
+                            [ngModelOptions]="{ standalone: true }"
+                            (keydown)="onInlineDividendEditKeydown($event, dividend, 'amount')"
+                            [disabled]="isSaving"
+                          />
+                        </div>
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineDividendEdit(dividend)" [disabled]="isSaving" aria-label="Save dividend amount change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineDividendEdit()" [disabled]="isSaving" aria-label="Cancel dividend amount change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineDividendEditError) {
+                          <div class="inline-edit-error">{{ inlineDividendEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display cell-display-details cell-display-right">
+                        <div class="cell-display-stack cell-display-stack-end">
+                          <span>{{ formatNumber(netDividendAmount(dividend)) }}</span>
+                          @if ((dividend.fee ?? 0) > 0) {
+                            <div class="secondary-value">Gross: {{ formatNumber(dividend.amount) }}</div>
+                            <div class="secondary-value cash-out">Fee: {{ formatNumber(dividend.fee ?? 0) }}</div>
+                          }
+                          @if (dividend.perShare != null) {
+                            <div class="secondary-value" [class.cash-out]="dividend.perShare < 0">
+                              Per share: {{ formatNumber(dividend.perShare) }}
+                            </div>
+                          }
+                        </div>
+                        @if (canInlineEditDividendField(dividend, 'amount')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineDividendEdit(dividend, 'amount')" [disabled]="isSaving" aria-label="Edit dividend amount">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="numeric-col editable-cell" [class.inline-editing]="isInlineEditingDividend(dividend.id, 'sharesHeld')">
+                    @if (isInlineEditingDividend(dividend.id, 'sharesHeld')) {
+                      <div class="cell-editor cell-editor-singleline">
+                        <input
+                          class="inline-input inline-input-number"
+                          type="number"
+                          min="0"
+                          step="0.0001"
+                          placeholder="Shares held"
+                          [(ngModel)]="inlineDividendEditDraft.sharesHeld"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keydown)="onInlineDividendEditKeydown($event, dividend, 'sharesHeld')"
+                          [disabled]="isSaving"
+                        />
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineDividendEdit(dividend)" [disabled]="isSaving" aria-label="Save shares held change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineDividendEdit()" [disabled]="isSaving" aria-label="Cancel shares held change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineDividendEditError) {
+                          <div class="inline-edit-error">{{ inlineDividendEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display cell-display-right">
+                        <span>{{ dividend.sharesHeld != null ? formatNumber(dividend.sharesHeld) : '-' }}</span>
+                        @if (canInlineEditDividendField(dividend, 'sharesHeld')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineDividendEdit(dividend, 'sharesHeld')" [disabled]="isSaving" aria-label="Edit shares held">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="notes-cell editable-cell" [class.inline-editing]="isInlineEditingDividend(dividend.id, 'notes')">
+                    @if (isInlineEditingDividend(dividend.id, 'notes')) {
+                      <div class="cell-editor">
+                        <textarea
+                          class="inline-textarea"
+                          rows="3"
+                          [(ngModel)]="inlineDividendEditDraft.notes"
+                          [ngModelOptions]="{ standalone: true }"
+                          (keydown)="onInlineDividendEditKeydown($event, dividend, 'notes')"
+                          [disabled]="isSaving"
+                        ></textarea>
+                        <div class="cell-editor-actions">
+                          <button mat-icon-button type="button" (click)="saveInlineDividendEdit(dividend)" [disabled]="isSaving" aria-label="Save dividend notes change">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button type="button" (click)="cancelInlineDividendEdit()" [disabled]="isSaving" aria-label="Cancel dividend notes change">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                        @if (inlineDividendEditError) {
+                          <div class="inline-edit-error">{{ inlineDividendEditError }}</div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="cell-display cell-display-notes">
+                        <span>{{ dividendNotes(dividend) || '-' }}</span>
+                        @if (canInlineEditDividendField(dividend, 'notes')) {
+                          <button mat-icon-button type="button" class="cell-edit-trigger" (click)="startInlineDividendEdit(dividend, 'notes')" [disabled]="isSaving" aria-label="Edit dividend notes">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="actions-cell">
+                    <button mat-button type="button" (click)="openEditDividendDialog(dividend)" [disabled]="isSaving">
+                      Edit
+                    </button>
+                    <button mat-button type="button" (click)="deleteDividend(dividend)" [disabled]="isSaving">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </ng-container>
+
+  <!-- Cash Events Only View -->
+  <ng-container *ngSwitchCase="'cash-events'">
+    <div class="tab-content">
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        (click)="openAddCashEventDialog()"
+        [disabled]="isSaving"
+        class="add-button"
+      >
+        <mat-icon>attach_money</mat-icon>
+        Add Cash Entry
+      </button>
+
+      @if (filteredCashEvents().length === 0) {
+        <p class="empty-state">No cash entries yet. Add a deposit to fund this account.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="cash-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Details</th>
+                <th class="numeric-col">Amount</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (event of filteredCashEvents(); track event.id) {
+                <tr>
+                  <td>{{ formatDate(event.date) }}</td>
+                  <td>{{ cashEventLabel(event.type) }}</td>
+                  <td>{{ cashEventDetails(event.type) }}</td>
+                  <td class="numeric-col" [class.cash-out]="cashAmountSigned(event) < 0">
+                    {{ formatNumber(cashAmountSigned(event)) }}
+                  </td>
+                  <td>{{ cashEventNotes(event) || '-' }}</td>
+                  <td class="actions-cell">
+                    <button mat-button type="button" (click)="openEditCashEventDialog(event)" [disabled]="isSaving">
+                      Edit
+                    </button>
+                    <button mat-button type="button" (click)="deleteCashEvent(event)" [disabled]="isSaving">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </ng-container>
+
+  <!-- All Entries (Default) View -->
+  <ng-container *ngSwitchDefault>
+    <div class="tab-content">
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        (click)="openAddCashEventDialog()"
+        [disabled]="isSaving"
+        class="add-button"
+      >
+        <mat-icon>attach_money</mat-icon>
+        Add Cash Entry
+      </button>
+
+      @if (cashLedgerRows().length === 0) {
+        <p class="empty-state">No cash entries yet. Add a deposit to fund this account.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="cash-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Source</th>
+                <th>Details</th>
+                <th class="numeric-col">Amount</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of cashLedgerRows(); track row.id) {
+                <tr>
+                  <td>{{ formatDate(row.date) }}</td>
+                  <td>{{ row.sourceLabel }}</td>
+                  <td>
+                    @if (row.symbol) {
+                      <div class="cash-details-cell">
+                        <app-symbol [symbol]="row.symbol"></app-symbol>
+                        @if (row.toSymbol) {
+                          <span class="swap-arrow">→</span>
+                          <app-symbol [symbol]="row.toSymbol"></app-symbol>
+                        }
+                        @if (row.details) {
+                          <span class="cash-details-text">{{ row.details }}</span>
+                        }
+                      </div>
+                    } @else {
+                      {{ row.details }}
+                    }
+                  </td>
+                  <td class="numeric-col" [class.cash-out]="row.amount < 0">
+                    {{ formatNumber(row.amount) }}
+                  </td>
+                  <td>{{ row.notes || '-' }}</td>
+                  <td class="actions-cell">
+                    @if (row.transaction; as tx) {
+                      <button mat-button type="button" (click)="openEditTransactionDialog(tx)" [disabled]="isSaving">
+                        Edit
+                      </button>
+                      <button mat-button type="button" (click)="deleteTransaction(tx)" [disabled]="isSaving">
+                        Delete
+                      </button>
+                    } @else if (row.dividend; as dividend) {
+                      <button mat-button type="button" (click)="openEditDividendDialog(dividend)" [disabled]="isSaving">
+                        Edit
+                      </button>
+                      <button mat-button type="button" (click)="deleteDividend(dividend)" [disabled]="isSaving">
+                        Delete
+                      </button>
+                    }
+                    @if (row.cashEvent; as event) {
+                      <button mat-button type="button" (click)="openEditCashEventDialog(event)" [disabled]="isSaving">
+                        Edit
+                      </button>
+                      <button mat-button type="button" (click)="deleteCashEvent(event)" [disabled]="isSaving">
+                        Delete
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </ng-container>
+</ng-container>
+
+<!-- Stocks/Funds always visible as separate tab -->
+<div class="stocks-section">
+  <h3 class="section-title">
+    <mat-icon>query_stats</mat-icon>
+    Stocks/Funds
+  </h3>
+  <button
+    mat-raised-button
+    color="primary"
+    type="button"
+    (click)="openAddSymbolDialog()"
+    [disabled]="isSaving"
+    class="add-button"
+  >
+    <mat-icon>add</mat-icon>
+    Add Stock/Fund
+  </button>
+
+  @if (trackedSymbols().length === 0) {
+    <p class="empty-state">No symbols added yet for this account.</p>
+  } @else {
+    <div class="table-wrap">
+      <table class="symbols-table">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Display Name</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (symbol of trackedSymbols(); track symbol.id) {
+            <tr>
+              <td>{{ symbol.symbol }}</td>
+              <td>{{ symbol.fullName }}</td>
+              <td class="actions-cell">
+                <button mat-button type="button" (click)="openEditSymbolDialog(symbol)" [disabled]="isSaving">
+                  Edit
+                </button>
+                <button mat-button type="button" (click)="deleteSymbol(symbol)" [disabled]="isSaving">
+                  Remove
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

@@ -10,7 +10,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTabsModule } from '@angular/material/tabs';
+
 import { Account } from '../../core/models/account.model';
 import { CashEvent, CashEventType } from '../../core/models/cash-event.model';
 import { Dividend } from '../../core/models/dividend.model';
@@ -121,7 +121,6 @@ interface SymbolFilterOption {
     MatIconModule,
     MatSnackBarModule,
     MatDialogModule,
-    MatTabsModule,
     SymbolComponent,
   ],
   templateUrl: './account-details.component.html',
@@ -166,6 +165,7 @@ export class AccountDetailsComponent {
   readonly cashBalance = signal(0);
   readonly trackedSymbols = signal<TrackedSymbol[]>([]);
   readonly selectedSymbol = signal('ALL');
+  readonly selectedContentType = signal<'transactions' | 'dividends' | 'cash-events' | null>(null);
 
   readonly isCashNegative = computed(() => this.cashBalance() < 0);
 
@@ -346,6 +346,62 @@ export class AccountDetailsComponent {
     }
 
     return sortByDateAndCreatedAt(rows);
+  });
+
+  readonly filteredCashEvents = computed(() => {
+    const rows: CashLedgerRow[] = [];
+    const symbol = this.selectedSymbol();
+
+    // Only add cash events (not transactions or dividends)
+    if (symbol === 'ALL') {
+      for (const event of this.cashEvents()) {
+        rows.push({
+          id: `cash-event-${event.id}`,
+          date: event.date,
+          createdAt: event.createdAt,
+          source: 'cash-event',
+          sourceLabel: this.cashEventLabel(event.type),
+          details: this.cashEventDetails(event.type),
+          amount: this.cashAmountSigned(event),
+          currency: event.currency,
+          notes: this.cashEventNotes(event),
+          cashEvent: event,
+        });
+      }
+    } else {
+      // Cash events don't have symbols, so show all
+      for (const event of this.cashEvents()) {
+        rows.push({
+          id: `cash-event-${event.id}`,
+          date: event.date,
+          createdAt: event.createdAt,
+          source: 'cash-event',
+          sourceLabel: this.cashEventLabel(event.type),
+          details: this.cashEventDetails(event.type),
+          amount: this.cashAmountSigned(event),
+          currency: event.currency,
+          notes: this.cashEventNotes(event),
+          cashEvent: event,
+        });
+      }
+    }
+
+    return sortByDateAndCreatedAt(rows);
+  });
+
+  readonly contentToDisplay = computed(() => {
+    const type = this.selectedContentType();
+    
+    if (type === 'transactions') {
+      return { type: 'transactions' as const, list: this.filteredTransactions() };
+    } else if (type === 'dividends') {
+      return { type: 'dividends' as const, list: this.filteredDividends() };
+    } else if (type === 'cash-events') {
+      return { type: 'cash-events' as const, list: this.filteredCashEvents() };
+    } else {
+      // null = show all combined
+      return { type: 'all' as const, list: this.cashLedgerRows() };
+    }
   });
 
   readonly inlineEditingCell = signal<InlineTransactionEditingCell | null>(null);
@@ -592,6 +648,11 @@ export class AccountDetailsComponent {
   onSymbolChanged(symbol: string): void {
     this.cancelAllInlineEdits();
     this.selectedSymbol.set(symbol);
+  }
+
+  onContentTypeChanged(type: string | null): void {
+    this.cancelAllInlineEdits();
+    this.selectedContentType.set(type as 'transactions' | 'dividends' | 'cash-events' | null);
   }
 
   canInlineEditTransactionField(tx: Transaction, field: InlineTransactionField): boolean {
