@@ -926,6 +926,21 @@
                           </td>
                           <td>{{ row.notes || '-' }}</td>
                           <td class="actions-cell">
+                            @if (row.transaction; as tx) {
+                              <button mat-button type="button" (click)="openEditTransactionDialog(tx)" [disabled]="isSaving">
+                                Edit
+                              </button>
+                              <button mat-button type="button" (click)="deleteTransaction(tx)" [disabled]="isSaving">
+                                Delete
+                              </button>
+                            } @else if (row.dividend; as dividend) {
+                              <button mat-button type="button" (click)="openEditDividendDialog(dividend)" [disabled]="isSaving">
+                                Edit
+                              </button>
+                              <button mat-button type="button" (click)="deleteDividend(dividend)" [disabled]="isSaving">
+                                Delete
+                              </button>
+                            }
                             @if (row.cashEvent; as event) {
                               <button mat-button type="button" (click)="openEditCashEventDialog(event)" [disabled]="isSaving">
                                 Edit

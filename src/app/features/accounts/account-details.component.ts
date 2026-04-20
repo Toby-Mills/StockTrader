@@ -45,6 +45,8 @@ interface CashLedgerRow {
   currency: string;
   notes?: string;
   cashEvent?: CashEvent;
+  dividend?: Dividend;
+  transaction?: Transaction;
 }
 
 type CsvTransactionKind = 'Purchase' | 'Sell' | 'Sale' | 'Dividend' | 'Foreign Dividends' | 'REIT Distribution' | 'Securities Interest' | 'Foreign Dividend Witholding Tax';
@@ -319,6 +321,7 @@ export class AccountDetailsComponent {
         amount: this.netDividendAmount(dividend),
         currency: dividend.currency,
         notes: this.dividendNotes(dividend),
+        dividend,
       });
     }
 
@@ -338,6 +341,7 @@ export class AccountDetailsComponent {
         amount,
         currency: tx.currency,
         notes: fees > 0 ? `Fees: ${this.formatNumber(fees)}` : undefined,
+        transaction: tx,
       });
     }
 
