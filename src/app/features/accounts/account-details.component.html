@@ -452,13 +452,15 @@
                                 <input
                                   class="inline-input inline-input-number"
                                   type="number"
-                                  min="0"
                                   step="0.01"
                                   [(ngModel)]="inlineEditDraft.fees"
                                   [ngModelOptions]="{ standalone: true }"
                                   (keydown)="onInlineEditKeydown($event, tx, 'fees')"
                                   [disabled]="isSaving"
                                 />
+                                @if (+inlineEditDraft.fees < 0) {
+                                  <div class="inline-edit-error">Warning: negative fees are treated as a rebate or credit.</div>
+                                }
                                 <div class="cell-editor-actions">
                                   <button mat-icon-button type="button" (click)="saveInlineEdit(tx)" [disabled]="isSaving" aria-label="Save fees change">
                                     <mat-icon>check</mat-icon>
@@ -690,7 +692,6 @@
                                   <input
                                     class="inline-input inline-input-number"
                                     type="number"
-                                    min="0"
                                     step="0.01"
                                     placeholder="Fee"
                                     [(ngModel)]="inlineDividendEditDraft.fee"
@@ -698,6 +699,9 @@
                                     (keydown)="onInlineDividendEditKeydown($event, dividend, 'amount')"
                                     [disabled]="isSaving"
                                   />
+                                  @if (+inlineDividendEditDraft.fee < 0) {
+                                    <div class="inline-edit-error">Warning: negative fees are treated as a rebate or credit.</div>
+                                  }
                                   <input
                                     class="inline-input inline-input-number"
                                     type="number"
@@ -725,9 +729,9 @@
                               <div class="cell-display cell-display-details cell-display-right">
                                 <div class="cell-display-stack cell-display-stack-end">
                                   <span>{{ formatNumber(netDividendAmount(dividend)) }}</span>
-                                  @if ((dividend.fee ?? 0) > 0) {
+                                  @if ((dividend.fee ?? 0) !== 0) {
                                     <div class="secondary-value">Gross: {{ formatNumber(dividend.amount) }}</div>
-                                    <div class="secondary-value cash-out">Fee: {{ formatNumber(dividend.fee ?? 0) }}</div>
+                                    <div class="secondary-value" [class.cash-out]="(dividend.fee ?? 0) > 0" [class.cash-in]="(dividend.fee ?? 0) < 0">Fee: {{ formatNumber(dividend.fee ?? 0) }}</div>
                                   }
                                   @if (dividend.perShare != null) {
                                     <div class="secondary-value" [class.cash-out]="dividend.perShare < 0">

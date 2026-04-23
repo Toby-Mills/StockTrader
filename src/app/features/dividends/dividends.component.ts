@@ -305,7 +305,7 @@ export class DividendsComponent {
   dividendNotes(dividend: Dividend): string | undefined {
     const fee = dividend.fee ?? 0;
     const trimmedNotes = dividend.notes?.trim();
-    if (fee <= 0) {
+    if (fee === 0) {
       return trimmedNotes || undefined;
     }
 

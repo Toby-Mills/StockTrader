@@ -118,7 +118,7 @@ export class DividendDialogComponent {
       ],
       date: [this.toDate(this.dialogData.dividend?.date) ?? new Date(), [Validators.required]],
       amount: [this.dialogData.dividend?.amount ?? 0, [Validators.required]],
-      fee: [this.dialogData.dividend?.fee ?? 0, [Validators.min(0)]],
+      fee: [this.dialogData.dividend?.fee ?? 0],
       perShare: [this.dialogData.dividend?.perShare ?? null],
       sharesHeld: [this.dialogData.dividend?.sharesHeld ?? 0, [Validators.min(0)]],
       notes: [this.dialogData.dividend?.notes ?? '', [Validators.maxLength(500)]],
@@ -143,6 +143,10 @@ export class DividendDialogComponent {
 
   get accountCurrency(): string {
     return this.dialogData.accountCurrency;
+  }
+
+  get hasNegativeFee(): boolean {
+    return Number(this.form.controls.fee.value || 0) < 0;
   }
 
   async openSymbolCreateOption(): Promise<void> {

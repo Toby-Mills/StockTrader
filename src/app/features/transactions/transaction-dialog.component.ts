@@ -115,7 +115,7 @@ export class TransactionDialogComponent {
       date: [this.toDate(transaction?.date) ?? new Date(), [Validators.required]],
       quantity: [transaction?.quantity ?? 1, [Validators.required, Validators.min(0)]],
       price: [transaction?.price ?? 0, [Validators.required, Validators.min(0)]],
-      fees: [transaction?.fees ?? 0, [Validators.min(0)]],
+      fees: [transaction?.fees ?? 0],
       notes: [transaction?.notes ?? '', [Validators.maxLength(500)]],
       toSymbol: [transaction?.toSymbol ?? '', [Validators.maxLength(20)]],
       toQuantity: [transaction?.toQuantity ?? 1, [Validators.min(0)]],
@@ -160,6 +160,10 @@ export class TransactionDialogComponent {
     const fees = Number(value.fees || 0);
     if (value.type === 'swap') return fees;
     return value.type === 'sell' ? this.totalPrice - fees : this.totalPrice + fees;
+  }
+
+  get hasNegativeFees(): boolean {
+    return Number(this.form.controls.fees.value || 0) < 0;
   }
 
   async onSymbolSelectionChanged(selectedSymbol: string): Promise<void> {

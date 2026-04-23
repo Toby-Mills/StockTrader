@@ -57,13 +57,17 @@ export class CashEventDialogComponent {
       type: [this.dialogData.cashEvent?.type ?? 'deposit' as CashEventType, [Validators.required]],
       date: [this.toDate(this.dialogData.cashEvent?.date) ?? new Date(), [Validators.required]],
       amount: [this.dialogData.cashEvent?.amount ?? 0, [Validators.required, Validators.min(0.000001)]],
-      fee: [this.dialogData.cashEvent?.fee ?? 0, [Validators.min(0)]],
+      fee: [this.dialogData.cashEvent?.fee ?? 0],
       notes: [this.dialogData.cashEvent?.notes ?? '', [Validators.maxLength(500)]],
     });
   }
 
   get accountCurrency(): string {
     return this.dialogData.accountCurrency;
+  }
+
+  get hasNegativeFee(): boolean {
+    return Number(this.form.controls.fee.value || 0) < 0;
   }
 
   submit(): void {

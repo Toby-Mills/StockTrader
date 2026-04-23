@@ -1208,7 +1208,7 @@ export class AccountDetailsComponent {
   cashEventNotes(event: CashEvent): string | undefined {
     const fee = event.fee ?? 0;
     const trimmedNotes = event.notes?.trim();
-    if (fee <= 0) {
+    if (fee === 0) {
       return trimmedNotes || undefined;
     }
 
@@ -1227,7 +1227,7 @@ export class AccountDetailsComponent {
   dividendNotes(dividend: Dividend): string | undefined {
     const fee = dividend.fee ?? 0;
     const trimmedNotes = dividend.notes?.trim();
-    if (fee <= 0) {
+    if (fee === 0) {
       return trimmedNotes || undefined;
     }
 
@@ -2268,9 +2268,9 @@ export class AccountDetailsComponent {
       }
 
       case 'fees': {
-        const fees = this.parseInlineNumber(this.inlineEditDraft.fees, 0);
+        const fees = this.parseInlineNumber(this.inlineEditDraft.fees, null);
         if (fees == null) {
-          this.inlineEditError = 'Enter fees of zero or more.';
+          this.inlineEditError = 'Enter a valid fee amount.';
           return null;
         }
 
@@ -2325,9 +2325,9 @@ export class AccountDetailsComponent {
           return null;
         }
 
-        const fee = this.parseInlineNumber(this.inlineDividendEditDraft.fee, 0);
+        const fee = this.parseInlineNumber(this.inlineDividendEditDraft.fee, null);
         if (fee == null) {
-          this.inlineDividendEditError = 'Enter a fee of zero or more.';
+          this.inlineDividendEditError = 'Enter a valid fee amount.';
           return null;
         }
 
