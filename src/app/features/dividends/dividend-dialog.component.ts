@@ -68,6 +68,7 @@ export class DividendDialogComponent {
   symbolMessage = '';
   readonly symbolQuery = signal('');
   readonly dividendTypeQuery = signal('');
+  readonly hasEditedDividendType = signal(false);
   readonly filteredSymbolsList = computed(() => {
     const query = this.symbolQuery();
     if (!query) {
@@ -80,6 +81,10 @@ export class DividendDialogComponent {
     );
   });
   readonly filteredDividendTypesList = computed(() => {
+    if (!this.hasEditedDividendType()) {
+      return this.dividendTypes;
+    }
+
     const query = this.dividendTypeQuery();
     if (!query) {
       return this.dividendTypes;
@@ -139,6 +144,10 @@ export class DividendDialogComponent {
         takeUntilDestroyed(),
       )
       .subscribe(query => this.dividendTypeQuery.set(query));
+  }
+
+  onDividendTypeInput(): void {
+    this.hasEditedDividendType.set(true);
   }
 
   get accountCurrency(): string {

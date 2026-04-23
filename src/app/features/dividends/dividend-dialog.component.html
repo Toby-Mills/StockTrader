@@ -32,6 +32,7 @@
       <input
         matInput
         formControlName="dividendTypeName"
+        (input)="onDividendTypeInput()"
         [matAutocomplete]="dividendTypeAuto"
         placeholder="Choose or type a new type" />
       <mat-autocomplete #dividendTypeAuto="matAutocomplete">
