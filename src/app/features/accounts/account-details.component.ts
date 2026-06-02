@@ -6,8 +6,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 
@@ -116,7 +118,9 @@ interface SymbolFilterOption {
     FormsModule,
     MatCardModule,
     MatButtonModule,
+    MatDatepickerModule,
     MatFormFieldModule,
+    MatInputModule,
     MatSelectModule,
     MatIconModule,
     MatSnackBarModule,
@@ -166,6 +170,8 @@ export class AccountDetailsComponent {
   readonly trackedSymbols = signal<TrackedSymbol[]>([]);
   readonly selectedSymbol = signal('ALL');
   readonly selectedContentType = signal<'transactions' | 'dividends' | 'cash-events' | null>(null);
+  readonly selectedStartDate = signal<Date | null>(null);
+  readonly selectedEndDate = signal<Date | null>(null);
 
   readonly isCashNegative = computed(() => this.cashBalance() < 0);
 
@@ -215,7 +221,7 @@ export class AccountDetailsComponent {
 
   readonly filteredTransactions = computed(() => {
     const symbol = this.selectedSymbol();
-    const txList = [...this.transactions()];
+    const txList = this.transactions().filter(tx => this.isWithinSelectedDateRange(tx.date));
     if (symbol === 'ALL') {
       return txList;
     }
@@ -224,7 +230,7 @@ export class AccountDetailsComponent {
 
   readonly filteredDividends = computed(() => {
     const symbol = this.selectedSymbol();
-    const list = [...this.dividends()];
+    const list = this.dividends().filter(div => this.isWithinSelectedDateRange(div.date));
     if (symbol === 'ALL') {
       return list;
     }
@@ -293,6 +299,9 @@ export class AccountDetailsComponent {
 
     if (symbol === 'ALL') {
       for (const event of this.cashEvents()) {
+        if (!this.isWithinSelectedDateRange(event.date)) {
+          continue;
+        }
         rows.push({
           id: `cash-event-${event.id}`,
           date: event.date,
@@ -350,40 +359,23 @@ export class AccountDetailsComponent {
 
   readonly filteredCashEvents = computed(() => {
     const rows: CashLedgerRow[] = [];
-    const symbol = this.selectedSymbol();
+    for (const event of this.cashEvents()) {
+      if (!this.isWithinSelectedDateRange(event.date)) {
+        continue;
+      }
 
-    // Only add cash events (not transactions or dividends)
-    if (symbol === 'ALL') {
-      for (const event of this.cashEvents()) {
-        rows.push({
-          id: `cash-event-${event.id}`,
-          date: event.date,
-          createdAt: event.createdAt,
-          source: 'cash-event',
-          sourceLabel: this.cashEventLabel(event.type),
-          details: this.cashEventDetails(event.type),
-          amount: this.cashAmountSigned(event),
-          currency: event.currency,
-          notes: this.cashEventNotes(event),
-          cashEvent: event,
-        });
-      }
-    } else {
-      // Cash events don't have symbols, so show all
-      for (const event of this.cashEvents()) {
-        rows.push({
-          id: `cash-event-${event.id}`,
-          date: event.date,
-          createdAt: event.createdAt,
-          source: 'cash-event',
-          sourceLabel: this.cashEventLabel(event.type),
-          details: this.cashEventDetails(event.type),
-          amount: this.cashAmountSigned(event),
-          currency: event.currency,
-          notes: this.cashEventNotes(event),
-          cashEvent: event,
-        });
-      }
+      rows.push({
+        id: `cash-event-${event.id}`,
+        date: event.date,
+        createdAt: event.createdAt,
+        source: 'cash-event',
+        sourceLabel: this.cashEventLabel(event.type),
+        details: this.cashEventDetails(event.type),
+        amount: this.cashAmountSigned(event),
+        currency: event.currency,
+        notes: this.cashEventNotes(event),
+        cashEvent: event,
+      });
     }
 
     return sortByDateAndCreatedAt(rows);
@@ -653,6 +645,30 @@ export class AccountDetailsComponent {
   onContentTypeChanged(type: string | null): void {
     this.cancelAllInlineEdits();
     this.selectedContentType.set(type as 'transactions' | 'dividends' | 'cash-events' | null);
+  }
+
+  onStartDateChanged(value: Date | null): void {
+    this.cancelAllInlineEdits();
+
+    const nextStartDate = this.normalizeDateInput(value);
+    const currentEndDate = this.selectedEndDate();
+    this.selectedStartDate.set(nextStartDate);
+
+    if (nextStartDate && currentEndDate && this.compareDateValues(currentEndDate, nextStartDate) < 0) {
+      this.selectedEndDate.set(nextStartDate);
+    }
+  }
+
+  onEndDateChanged(value: Date | null): void {
+    this.cancelAllInlineEdits();
+
+    const nextEndDate = this.normalizeDateInput(value);
+    const currentStartDate = this.selectedStartDate();
+    this.selectedEndDate.set(nextEndDate);
+
+    if (nextEndDate && currentStartDate && this.compareDateValues(nextEndDate, currentStartDate) < 0) {
+      this.selectedStartDate.set(nextEndDate);
+    }
   }
 
   canInlineEditTransactionField(tx: Transaction, field: InlineTransactionField): boolean {
@@ -2592,6 +2608,48 @@ export class AccountDetailsComponent {
   private toTimestamp(rawDate: unknown): number {
     const date = this.toDate(rawDate);
     return date?.getTime() ?? 0;
+  }
+
+  private isWithinSelectedDateRange(rawDate: unknown): boolean {
+    const startDate = this.selectedStartDate();
+    const endDate = this.selectedEndDate();
+    if (!startDate && !endDate) {
+      return true;
+    }
+
+    const date = this.toDate(rawDate);
+    if (!date) {
+      return false;
+    }
+
+    const value = this.toLocalDateString(date);
+    if (startDate && value < this.toLocalDateString(startDate)) {
+      return false;
+    }
+
+    if (endDate && value > this.toLocalDateString(endDate)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private normalizeDateInput(value: Date | string | null | undefined): Date | null {
+    const date = this.toDate(value ?? null);
+    return date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : null;
+  }
+
+  private compareDateValues(a: Date, b: Date): number {
+    const aValue = this.toLocalDateString(a);
+    const bValue = this.toLocalDateString(b);
+    return aValue.localeCompare(bValue);
+  }
+
+  private toLocalDateString(date: Date): string {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private toDate(rawDate: unknown): Date | null {

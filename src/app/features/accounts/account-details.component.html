@@ -93,6 +93,34 @@
             </mat-select>
           </mat-form-field>
 
+          <div class="date-range-filter" aria-label="Filter by date range">
+            <mat-form-field appearance="outline">
+              <mat-label>From date</mat-label>
+              <input
+                matInput
+                [matDatepicker]="fromDatePicker"
+                [ngModel]="selectedStartDate()"
+                [ngModelOptions]="{ standalone: true }"
+                (dateChange)="onStartDateChanged($event.value)"
+              />
+              <mat-datepicker-toggle matIconSuffix [for]="fromDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #fromDatePicker></mat-datepicker>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>To date</mat-label>
+              <input
+                matInput
+                [matDatepicker]="toDatePicker"
+                [ngModel]="selectedEndDate()"
+                [ngModelOptions]="{ standalone: true }"
+                (dateChange)="onEndDateChanged($event.value)"
+              />
+              <mat-datepicker-toggle matIconSuffix [for]="toDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #toDatePicker></mat-datepicker>
+            </mat-form-field>
+          </div>
+
           <div class="cash-summary" [class.negative]="isCashNegative()">
             <p class="cash-summary-label">Available Cash</p>
             <p class="cash-summary-value">{{ formatMoney(cashBalance(), acc.currency) }}</p>
