@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -118,6 +119,7 @@ interface SymbolFilterOption {
     FormsModule,
     MatCardModule,
     MatButtonModule,
+    MatAutocompleteModule,
     MatDatepickerModule,
     MatFormFieldModule,
     MatInputModule,
@@ -172,6 +174,7 @@ export class AccountDetailsComponent {
   readonly selectedContentType = signal<'transactions' | 'dividends' | 'cash-events' | null>(null);
   readonly selectedStartDate = signal<Date | null>(null);
   readonly selectedEndDate = signal<Date | null>(null);
+  readonly symbolFilterText = signal('');
   readonly isDateRangeInvalid = computed(() => {
     const startDate = this.selectedStartDate();
     const endDate = this.selectedEndDate();
@@ -228,6 +231,17 @@ export class AccountDetailsComponent {
     }));
   });
 
+  readonly filteredSymbolFilterOptions = computed(() => {
+    const query = this.symbolFilterText().trim().toLowerCase();
+    if (!query) {
+      return this.symbolFilterOptions();
+    }
+
+    return this.symbolFilterOptions().filter(option =>
+      option.symbol.toLowerCase().includes(query) || option.fullName.toLowerCase().includes(query)
+    );
+  });
+
   readonly filteredTransactions = computed(() => {
     const symbol = this.selectedSymbol();
     const txList = this.transactions().filter(tx => this.isWithinSelectedDateRange(tx.date));
@@ -244,6 +258,44 @@ export class AccountDetailsComponent {
       return list;
     }
     return list.filter(div => div.symbol.toUpperCase() === symbol);
+  });
+
+  readonly transactionTotals = computed(() => {
+    const symbol = this.selectedSymbol();
+    let totalPrice = 0;
+    let totalFees = 0;
+    let totalCost = 0;
+
+    for (const tx of this.filteredTransactions()) {
+      const displayedTotalPrice = this.displayTotalPriceForSelection(tx);
+      if (displayedTotalPrice != null) {
+        totalPrice += displayedTotalPrice;
+      }
+
+      totalFees += tx.fees ?? 0;
+      totalCost += this.displayTotalCostForSelection(tx, symbol);
+    }
+
+    return {
+      totalPrice,
+      totalFees,
+      totalCost,
+    };
+  });
+
+  readonly dividendTotals = computed(() => {
+    let totalAmount = 0;
+    let totalSharesHeld = 0;
+
+    for (const dividend of this.filteredDividends()) {
+      totalAmount += this.netDividendAmount(dividend);
+      totalSharesHeld += dividend.sharesHeld ?? 0;
+    }
+
+    return {
+      totalAmount,
+      totalSharesHeld,
+    };
   });
 
   readonly filteredSymbolSummary = computed(() => {
@@ -389,6 +441,14 @@ export class AccountDetailsComponent {
 
     return sortByDateAndCreatedAt(rows);
   });
+
+  readonly cashEventTotals = computed(() =>
+    this.filteredCashEvents().reduce((sum, row) => sum + row.amount, 0)
+  );
+
+  readonly allEntryTotals = computed(() =>
+    this.cashLedgerRows().reduce((sum, row) => sum + row.amount, 0)
+  );
 
   readonly contentToDisplay = computed(() => {
     const type = this.selectedContentType();
@@ -628,8 +688,11 @@ export class AccountDetailsComponent {
     effect(() => {
       const selected = this.selectedSymbol();
       if (selected === 'ALL') {
+        this.symbolFilterText.set('');
         return;
       }
+
+      this.symbolFilterText.set(selected);
 
       const availableSymbols = this.symbols();
       if (!availableSymbols.includes(selected)) {
@@ -649,6 +712,15 @@ export class AccountDetailsComponent {
   onSymbolChanged(symbol: string): void {
     this.cancelAllInlineEdits();
     this.selectedSymbol.set(symbol);
+    this.symbolFilterText.set(symbol === 'ALL' ? '' : symbol);
+  }
+
+  onSymbolFilterInput(value: string): void {
+    this.symbolFilterText.set(value);
+  }
+
+  onSymbolFilterSelected(symbol: string): void {
+    this.onSymbolChanged(symbol);
   }
 
   onContentTypeChanged(type: string | null): void {

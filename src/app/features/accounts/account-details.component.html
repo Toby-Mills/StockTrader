@@ -32,26 +32,21 @@
         <div class="toolbar-row">
           <mat-form-field appearance="outline">
             <mat-label>Filter by Stock/Fund</mat-label>
-            <mat-select
-              [value]="selectedSymbol()"
-              (valueChange)="onSymbolChanged($event)"
-              panelWidth="min(90vw, 640px)"
+            <input
+              matInput
+              type="text"
+              [value]="symbolFilterText()"
+              [matAutocomplete]="symbolFilterAuto"
+              placeholder="Type to find a symbol"
+              (input)="onSymbolFilterInput($any($event.target).value)"
+            />
+            <mat-autocomplete
+              #symbolFilterAuto="matAutocomplete"
               panelClass="symbol-filter-panel"
+              (optionSelected)="onSymbolFilterSelected($event.option.value)"
             >
-              <mat-select-trigger>
-                @if (selectedSymbol() === 'ALL') {
-                  <span>All symbols</span>
-                } @else {
-                  <span class="symbol-option-content">
-                    <app-symbol [symbol]="selectedSymbol()" />
-                    @if (symbolNameByCode().get(selectedSymbol()); as fullName) {
-                      <span class="symbol-option-name">{{ fullName }}</span>
-                    }
-                  </span>
-                }
-              </mat-select-trigger>
               <mat-option value="ALL">All symbols</mat-option>
-              @for (option of symbolFilterOptions(); track option.symbol) {
+              @for (option of filteredSymbolFilterOptions(); track option.symbol) {
                 <mat-option [value]="option.symbol" class="symbol-option" [class.provider-divider]="option.showDivider">
                   <span class="symbol-option-content">
                     <app-symbol [symbol]="option.symbol" />
@@ -61,7 +56,7 @@
                   </span>
                 </mat-option>
               }
-            </mat-select>
+            </mat-autocomplete>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -561,6 +556,18 @@
                         </tr>
                       }
                     </tbody>
+                    <tfoot>
+                      <tr class="table-total-row">
+                        <td colspan="5">Total</td>
+                        <td class="numeric-col">{{ formatNumber(transactionTotals().totalPrice) }}</td>
+                        <td class="numeric-col">{{ formatNumber(transactionTotals().totalFees) }}</td>
+                        <td class="numeric-col" [class.cash-out]="transactionTotals().totalCost < 0">
+                          {{ formatNumber(transactionTotals().totalCost) }}
+                        </td>
+                        <td></td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               }
@@ -860,6 +867,17 @@
                         </tr>
                       }
                     </tbody>
+                    <tfoot>
+                      <tr class="table-total-row">
+                        <td colspan="3">Total</td>
+                        <td class="numeric-col" [class.cash-out]="dividendTotals().totalAmount < 0">
+                          {{ formatNumber(dividendTotals().totalAmount) }}
+                        </td>
+                        <td class="numeric-col">{{ formatNumber(dividendTotals().totalSharesHeld) }}</td>
+                        <td></td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               }
@@ -919,6 +937,16 @@
                 </tr>
               }
             </tbody>
+            <tfoot>
+              <tr class="table-total-row">
+                <td colspan="3">Total</td>
+                <td class="numeric-col" [class.cash-out]="cashEventTotals() < 0">
+                  {{ formatNumber(cashEventTotals()) }}
+                </td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       }
@@ -1034,6 +1062,16 @@
                 </tr>
               }
             </tbody>
+            <tfoot>
+              <tr class="table-total-row">
+                <td colspan="3">Total</td>
+                <td class="numeric-col" [class.cash-out]="allEntryTotals() < 0">
+                  {{ formatNumber(allEntryTotals()) }}
+                </td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       }
