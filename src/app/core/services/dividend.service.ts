@@ -11,6 +11,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  deleteField,
 } from '@angular/fire/firestore';
 import { Observable, map } from 'rxjs';
 import { Dividend } from '../models/dividend.model';
@@ -48,7 +49,9 @@ export class DividendService {
 
   updateDividend(accountId: string, id: string, changes: Partial<Dividend>): Promise<void> {
     this.requireAuth();
-    const payload = stripUndefined(changes) as UpdateData<Dividend>;
+    const payload = Object.fromEntries(
+      Object.entries(changes).map(([key, value]) => [key, value === undefined ? deleteField() : value])
+    ) as UpdateData<Dividend>;
     return updateDoc(
       doc(this.firestore, 'accounts', accountId, 'dividends', id),
       payload
