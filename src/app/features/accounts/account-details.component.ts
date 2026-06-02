@@ -172,6 +172,15 @@ export class AccountDetailsComponent {
   readonly selectedContentType = signal<'transactions' | 'dividends' | 'cash-events' | null>(null);
   readonly selectedStartDate = signal<Date | null>(null);
   readonly selectedEndDate = signal<Date | null>(null);
+  readonly isDateRangeInvalid = computed(() => {
+    const startDate = this.selectedStartDate();
+    const endDate = this.selectedEndDate();
+    if (!startDate || !endDate) {
+      return false;
+    }
+
+    return this.compareDateValues(startDate, endDate) > 0;
+  });
 
   readonly isCashNegative = computed(() => this.cashBalance() < 0);
 
@@ -651,24 +660,14 @@ export class AccountDetailsComponent {
     this.cancelAllInlineEdits();
 
     const nextStartDate = this.normalizeDateInput(value);
-    const currentEndDate = this.selectedEndDate();
     this.selectedStartDate.set(nextStartDate);
-
-    if (nextStartDate && currentEndDate && this.compareDateValues(currentEndDate, nextStartDate) < 0) {
-      this.selectedEndDate.set(nextStartDate);
-    }
   }
 
   onEndDateChanged(value: Date | null): void {
     this.cancelAllInlineEdits();
 
     const nextEndDate = this.normalizeDateInput(value);
-    const currentStartDate = this.selectedStartDate();
     this.selectedEndDate.set(nextEndDate);
-
-    if (nextEndDate && currentStartDate && this.compareDateValues(nextEndDate, currentStartDate) < 0) {
-      this.selectedStartDate.set(nextEndDate);
-    }
   }
 
   canInlineEditTransactionField(tx: Transaction, field: InlineTransactionField): boolean {

@@ -71,6 +71,21 @@ mat-card-content {
   align-items: center;
 }
 
+.date-range-warning {
+  color: #8b1d1d;
+}
+
+:host ::ng-deep .problematic-date-field .mdc-notched-outline__leading,
+:host ::ng-deep .problematic-date-field .mdc-notched-outline__notch,
+:host ::ng-deep .problematic-date-field .mdc-notched-outline__trailing {
+  border-color: #8b1d1d !important;
+}
+
+:host ::ng-deep .problematic-date-field .mat-mdc-floating-label,
+:host ::ng-deep .problematic-date-field .mat-datepicker-toggle {
+  color: #8b1d1d;
+}
+
 .cash-summary {
   justify-self: end;
   text-align: right;

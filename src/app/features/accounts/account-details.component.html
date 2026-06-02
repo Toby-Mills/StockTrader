@@ -94,7 +94,7 @@
           </mat-form-field>
 
           <div class="date-range-filter" aria-label="Filter by date range">
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" [class.problematic-date-field]="isDateRangeInvalid()">
               <mat-label>From date</mat-label>
               <input
                 matInput
@@ -105,6 +105,9 @@
               />
               <mat-datepicker-toggle matIconSuffix [for]="fromDatePicker"></mat-datepicker-toggle>
               <mat-datepicker #fromDatePicker></mat-datepicker>
+              @if (isDateRangeInvalid()) {
+                <mat-hint class="date-range-warning">From date is after To date.</mat-hint>
+              }
             </mat-form-field>
 
             <mat-form-field appearance="outline">
