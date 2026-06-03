@@ -22,6 +22,7 @@ interface DividendDialogData {
   accountCurrency: string;
   symbols: TrackedSymbol[];
   dividendTypes: DividendType[];
+  initialSymbol?: string;
   dividend?: Dividend;
 }
 
@@ -106,15 +107,19 @@ export class DividendDialogComponent {
       accountCurrency: data?.accountCurrency ?? 'USD',
       symbols: data?.symbols ?? [],
       dividendTypes: data?.dividendTypes ?? [],
+      initialSymbol: data?.initialSymbol,
       dividend: data?.dividend,
     };
     this.isEditMode = !!this.dialogData.dividend;
-    this.symbols = this.buildSymbols(this.dialogData.symbols, this.dialogData.dividend?.symbol);
+    this.symbols = this.buildSymbols(
+      this.dialogData.symbols,
+      this.dialogData.dividend?.symbol ?? this.dialogData.initialSymbol
+    );
     this.dividendTypes = this.buildDividendTypes(this.dialogData.dividendTypes, this.dialogData.dividend?.dividendTypeId);
 
     this.form = this.fb.nonNullable.group({
       symbol: [
-        this.dialogData.dividend?.symbol ?? '',
+        this.dialogData.dividend?.symbol ?? this.dialogData.initialSymbol ?? '',
         [Validators.required, Validators.maxLength(20)],
       ],
       dividendTypeName: [
