@@ -1,5 +1,7 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, computed, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -8,7 +10,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, map, startWith } from 'rxjs';
 import { Transaction, TransactionType } from '../../core/models/transaction.model';
 import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
 import { SymbolCatalogService } from '../../core/services/symbol-catalog.service';
@@ -47,6 +49,7 @@ export interface TransactionDialogResult {
     imports: [
         FormsModule,
         ReactiveFormsModule,
+      MatAutocompleteModule,
         MatDatepickerModule,
         MatDialogModule,
         MatFormFieldModule,
@@ -78,6 +81,28 @@ export class TransactionDialogComponent {
   ];
   selectedModel = 'gemini-2.5-flash';
   symbolMessage = '';
+  readonly symbolQuery = signal('');
+  readonly toSymbolQuery = signal('');
+  readonly filteredSymbols = computed(() => {
+    const query = this.symbolQuery().trim().toLowerCase();
+    if (!query) {
+      return this.symbols;
+    }
+
+    return this.symbols.filter(symbol =>
+      symbol.symbol.toLowerCase().includes(query) || symbol.fullName.toLowerCase().includes(query)
+    );
+  });
+  readonly filteredToSymbols = computed(() => {
+    const query = this.toSymbolQuery().trim().toLowerCase();
+    if (!query) {
+      return this.symbols;
+    }
+
+    return this.symbols.filter(symbol =>
+      symbol.symbol.toLowerCase().includes(query) || symbol.fullName.toLowerCase().includes(query)
+    );
+  });
   isCreatingSymbol = false;
   isImportingPdf = false;
   isPdfDragOver = false;
@@ -120,6 +145,22 @@ export class TransactionDialogComponent {
       toSymbol: [transaction?.toSymbol ?? '', [Validators.maxLength(20)]],
       toQuantity: [transaction?.toQuantity ?? 1, [Validators.min(0)]],
     });
+
+    this.form.controls.symbol.valueChanges
+      .pipe(
+        startWith(this.form.controls.symbol.value),
+        map(value => value.trim().toLowerCase()),
+        takeUntilDestroyed(),
+      )
+      .subscribe(query => this.symbolQuery.set(query));
+
+    this.form.controls.toSymbol.valueChanges
+      .pipe(
+        startWith(this.form.controls.toSymbol.value),
+        map(value => value.trim().toLowerCase()),
+        takeUntilDestroyed(),
+      )
+      .subscribe(query => this.toSymbolQuery.set(query));
 
     if (TransactionDialogComponent.DEBUG_SWAPS && transaction) {
       console.groupCollapsed('[SwapDebug][Dialog][Init] Edit transaction loaded');
@@ -166,13 +207,13 @@ export class TransactionDialogComponent {
     return Number(this.form.controls.fees.value || 0) < 0;
   }
 
-  async onSymbolSelectionChanged(selectedSymbol: string): Promise<void> {
+  async onSymbolSelectionChanged(selectedSymbol: string, targetControl: 'symbol' | 'toSymbol' = 'symbol'): Promise<void> {
     if (selectedSymbol !== TransactionDialogComponent.CREATE_SYMBOL_OPTION) {
       return;
     }
 
-    this.form.controls.symbol.setValue('');
-    await this.openCreateSymbolDialog();
+    this.form.controls[targetControl].setValue('');
+    await this.openCreateSymbolDialog(targetControl);
   }
 
   openImportPicker(fileInput: HTMLInputElement): void {
@@ -338,11 +379,23 @@ export class TransactionDialogComponent {
     }
 
     const value = this.form.getRawValue();
+    const symbolTrimmed = value.symbol.trim().toUpperCase();
+
+    if (!symbolTrimmed || !this.isKnownSymbol(symbolTrimmed)) {
+      this.form.controls.symbol.setErrors({ invalidSymbol: true });
+      this.form.markAllAsTouched();
+      return;
+    }
 
     if (value.type === 'swap') {
       const toSymbolTrimmed = value.toSymbol.trim().toUpperCase();
       if (!toSymbolTrimmed) {
         this.form.controls.toSymbol.setErrors({ required: true });
+        this.form.markAllAsTouched();
+        return;
+      }
+      if (!this.isKnownSymbol(toSymbolTrimmed)) {
+        this.form.controls.toSymbol.setErrors({ invalidSymbol: true });
         this.form.markAllAsTouched();
         return;
       }
@@ -352,7 +405,7 @@ export class TransactionDialogComponent {
         return;
       }
       const payload: TransactionDialogResult = {
-        symbol: value.symbol.trim().toUpperCase(),
+        symbol: symbolTrimmed,
         type: value.type,
         date: this.toNoonDate(value.date),
         quantity: Number(value.quantity),
@@ -381,7 +434,7 @@ export class TransactionDialogComponent {
     }
 
     const payload: TransactionDialogResult = {
-      symbol: value.symbol.trim().toUpperCase(),
+      symbol: symbolTrimmed,
       type: value.type,
       date: this.toNoonDate(value.date),
       quantity: Number(value.quantity),
@@ -400,7 +453,7 @@ export class TransactionDialogComponent {
     this.dialogRef.close(payload);
   }
 
-  async openCreateSymbolDialog(): Promise<void> {
+  async openCreateSymbolDialog(targetControl: 'symbol' | 'toSymbol' = 'symbol'): Promise<void> {
     if (this.isCreatingSymbol || !this.dialogData.accountId) {
       return;
     }
@@ -425,7 +478,7 @@ export class TransactionDialogComponent {
     const normalizedSymbol = result.symbol.trim().toUpperCase();
     const existing = this.symbols.find(symbol => symbol.symbol.toUpperCase() === normalizedSymbol);
     if (existing) {
-      this.form.controls.symbol.setValue(existing.symbol);
+      this.form.controls[targetControl].setValue(existing.symbol);
       this.symbolMessage = `${existing.symbol} already exists and was selected.`;
       return;
     }
@@ -445,7 +498,7 @@ export class TransactionDialogComponent {
       };
 
       this.symbols = [...this.symbols, createdSymbol].sort((a, b) => a.symbol.localeCompare(b.symbol));
-      this.form.controls.symbol.setValue(createdSymbol.symbol);
+  this.form.controls[targetControl].setValue(createdSymbol.symbol);
       this.symbolMessage = `Created ${createdSymbol.symbol}.`;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -622,6 +675,10 @@ export class TransactionDialogComponent {
         fullName: 'Imported symbol (not yet in catalog)',
       },
     ].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  }
+
+  private isKnownSymbol(symbol: string): boolean {
+    return this.symbols.some(existing => existing.symbol.toUpperCase() === symbol);
   }
 
   private toDate(rawDate: unknown): Date | null {

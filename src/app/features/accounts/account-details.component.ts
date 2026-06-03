@@ -1489,9 +1489,6 @@ export class AccountDetailsComponent {
       return;
     }
 
-    const selectedSymbol = this.selectedSymbol();
-    const initialSymbol = selectedSymbol === 'ALL' ? undefined : selectedSymbol;
-
     const result = await firstValueFrom(
       this.dialog
         .open(DividendDialogComponent, {
@@ -1501,7 +1498,6 @@ export class AccountDetailsComponent {
             accountCurrency: account.currency,
             symbols: this.trackedSymbols(),
             dividendTypes: this.dividendTypes(),
-            initialSymbol,
           },
         })
         .afterClosed()

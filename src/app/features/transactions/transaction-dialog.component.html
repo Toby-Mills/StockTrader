@@ -78,16 +78,15 @@
   <form [formGroup]="form" class="tx-form" [class.importing]="isImportingPdf">
     <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('symbol')">
       <mat-label>{{ isSwap ? 'From Symbol' : 'Stock / Fund Symbol' }}</mat-label>
-      <mat-select formControlName="symbol" (selectionChange)="onSymbolSelectionChanged($event.value)">
-        <mat-select-trigger>
-          @if (form.controls.symbol.value) {
-            <span class="symbol-option-content">
-              <app-symbol [symbol]="form.controls.symbol.value" />
-            </span>
-          }
-        </mat-select-trigger>
+      <input
+        matInput
+        formControlName="symbol"
+        [matAutocomplete]="symbolAuto"
+        placeholder="Type or select a symbol"
+      />
+      <mat-autocomplete #symbolAuto="matAutocomplete" (optionSelected)="onSymbolSelectionChanged($event.option.value, 'symbol')">
         <mat-option value="__CREATE_NEW_SYMBOL__">+ Create new symbol...</mat-option>
-        @for (symbol of symbols; track symbol.id) {
+        @for (symbol of filteredSymbols(); track symbol.id) {
           <mat-option [value]="symbol.symbol" class="symbol-option">
             <span class="symbol-option-content">
               <app-symbol [symbol]="symbol.symbol" />
@@ -95,13 +94,17 @@
             </span>
           </mat-option>
         }
-      </mat-select>
+      </mat-autocomplete>
       @if (symbols.length === 0) {
-        <mat-hint>No symbols yet. Choose "Create new symbol...".</mat-hint>
+        <mat-hint>No symbols yet. Type a symbol or choose "Create new symbol...".</mat-hint>
       } @else if (symbolMessage) {
         <mat-hint>{{ symbolMessage }}</mat-hint>
       }
-      <mat-error>Symbol is required.</mat-error>
+      @if (form.controls.symbol.hasError('invalidSymbol')) {
+        <mat-error>Select a valid symbol or create a new one.</mat-error>
+      } @else {
+        <mat-error>Symbol is required.</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline" [class.imported-field]="isFieldImported('type')">
@@ -131,16 +134,15 @@
     @if (isSwap) {
       <mat-form-field appearance="outline">
         <mat-label>To Symbol</mat-label>
-        <mat-select formControlName="toSymbol" (selectionChange)="onSymbolSelectionChanged($event.value)">
-          <mat-select-trigger>
-            @if (form.controls.toSymbol.value) {
-              <span class="symbol-option-content">
-                <app-symbol [symbol]="form.controls.toSymbol.value" />
-              </span>
-            }
-          </mat-select-trigger>
+        <input
+          matInput
+          formControlName="toSymbol"
+          [matAutocomplete]="toSymbolAuto"
+          placeholder="Type or select a symbol"
+        />
+        <mat-autocomplete #toSymbolAuto="matAutocomplete" (optionSelected)="onSymbolSelectionChanged($event.option.value, 'toSymbol')">
           <mat-option value="__CREATE_NEW_SYMBOL__">+ Create new symbol...</mat-option>
-          @for (symbol of symbols; track symbol.id) {
+          @for (symbol of filteredToSymbols(); track symbol.id) {
             <mat-option [value]="symbol.symbol" class="symbol-option">
               <span class="symbol-option-content">
                 <app-symbol [symbol]="symbol.symbol" />
@@ -148,8 +150,12 @@
               </span>
             </mat-option>
           }
-        </mat-select>
-        <mat-error>To symbol is required for a swap.</mat-error>
+        </mat-autocomplete>
+        @if (form.controls.toSymbol.hasError('invalidSymbol')) {
+          <mat-error>Select a valid to symbol or create a new one.</mat-error>
+        } @else {
+          <mat-error>To symbol is required for a swap.</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
