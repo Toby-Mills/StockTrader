@@ -13,6 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { MatMenuModule } from '@angular/material/menu';
 
 import { Account } from '../../core/models/account.model';
 import { CashEvent, CashEventType } from '../../core/models/cash-event.model';
@@ -24,16 +25,20 @@ import { AccountService } from '../../core/services/account.service';
 import { CashEventService } from '../../core/services/cash-event.service';
 import { DividendService } from '../../core/services/dividend.service';
 import { DividendTypeService } from '../../core/services/dividend-type.service';
-import { PortfolioService } from '../../core/services/portfolio.service';
+import { PortfolioService, PortfolioSnapshot, SymbolPerformanceSummary } from '../../core/services/portfolio.service';
+import { PriceService } from '../../core/services/price.service';
+import { PriceQuote } from '../../core/models/price-quote.model';
 import { SymbolCatalogService } from '../../core/services/symbol-catalog.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { sortByDateAndCreatedAt } from '../../core/utils/record-sort';
 import { CashEventDialogComponent, CashEventDialogResult } from './cash-event-dialog.component';
 import { AccountDeleteConfirmDialogComponent } from './account-delete-confirm-dialog.component';
+import { AccountDialogComponent, AccountDialogResult } from './account-dialog.component';
 import { DividendDialogComponent, DividendDialogResult } from '../dividends/dividend-dialog.component';
 import { SymbolDialogComponent, SymbolDialogResult } from '../symbols/symbol-dialog.component';
 import { TransactionDialogComponent, TransactionDialogResult } from '../transactions/transaction-dialog.component';
 import { SymbolComponent } from '../../shared/symbol-chip.component';
+import { Holding } from '../../core/models/holding.model';
 
 interface CashLedgerRow {
   id: string;
@@ -124,6 +129,7 @@ interface SymbolFilterOption {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatMenuModule,
     MatIconModule,
     MatSnackBarModule,
     MatDialogModule,
@@ -158,18 +164,25 @@ export class AccountDetailsComponent {
   private readonly dividendTypeService = inject(DividendTypeService);
   private readonly cashEventService = inject(CashEventService);
   private readonly portfolioService = inject(PortfolioService);
+  private readonly priceService = inject(PriceService);
   private readonly symbolCatalogService = inject(SymbolCatalogService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
   readonly accountId = signal<string | null>(null);
+  readonly selectedAccountId = computed(() => this.accountId() ?? '');
+  readonly accounts = signal<Account[]>([]);
+  readonly hasAccounts = computed(() => this.accounts().length > 0);
   readonly account = signal<Account | null>(null);
   readonly transactions = signal<Transaction[]>([]);
   readonly dividends = signal<Dividend[]>([]);
   readonly dividendTypes = signal<DividendType[]>([]);
   readonly cashEvents = signal<CashEvent[]>([]);
   readonly cashBalance = signal(0);
+  readonly portfolioSnapshot = signal<PortfolioSnapshot | null>(null);
   readonly trackedSymbols = signal<TrackedSymbol[]>([]);
+  readonly quoteBySymbol = signal<Record<string, PriceQuote>>({});
+  readonly isRefreshingQuotes = signal(false);
   readonly selectedSymbol = signal('ALL');
   readonly selectedContentType = signal<'transactions' | 'dividends' | 'cash-events' | null>(null);
   readonly selectedStartDate = signal<Date | null>(null);
@@ -186,6 +199,32 @@ export class AccountDetailsComponent {
   });
 
   readonly isCashNegative = computed(() => this.cashBalance() < 0);
+
+  readonly holdingsValuation = computed(() =>
+    (this.portfolioSnapshot()?.holdings ?? [])
+      .filter(holding => holding.quantity > 0)
+      .sort((a, b) => a.symbol.localeCompare(b.symbol))
+  );
+
+  readonly accountPerformance = computed(() => this.portfolioSnapshot()?.accountPerformance ?? null);
+
+  readonly selectedSymbolPerformance = computed<SymbolPerformanceSummary | null>(() => {
+    const symbol = this.selectedSymbol();
+    if (symbol === 'ALL') {
+      return null;
+    }
+
+    return this.portfolioSnapshot()?.symbolPerformanceBySymbol[symbol] ?? null;
+  });
+
+  readonly selectedSymbolHolding = computed<Holding | null>(() => {
+    const symbol = this.selectedSymbol();
+    if (symbol === 'ALL') {
+      return null;
+    }
+
+    return this.holdingsValuation().find(holding => holding.symbol === symbol) ?? null;
+  });
 
   readonly symbols = computed(() =>
     [...new Set([
@@ -512,30 +551,34 @@ export class AccountDetailsComponent {
     }, { allowSignalWrites: true });
 
     effect(onCleanup => {
-      const id = this.accountId();
-      this.debug('Account effect triggered', { id });
+      const currentRequestId = this.accountId();
+      this.debug('Account effect triggered', { id: currentRequestId });
 
-      if (!id) {
-        this.debug('No account id yet, keeping account as null');
-        this.account.set(null);
-        return;
-      }
-
-      this.debug('Subscribing to accounts stream', { id });
+      this.debug('Subscribing to accounts stream');
       const subscription = this.accountService.getAccounts().subscribe({
         next: accounts => {
-          const found = accounts.find(account => account.id === id) ?? null;
+          const sortedAccounts = [...accounts].sort((a, b) => a.name.localeCompare(b.name));
+          this.accounts.set(sortedAccounts);
+
+          let id = currentRequestId;
+          if (!id && sortedAccounts.length > 0) {
+            id = sortedAccounts[0].id;
+            this.debug('No account id in route, picking first available', { id });
+            this.router.navigate(['/accounts', id]);
+            return;
+          }
+
+          const found = sortedAccounts.find(account => account.id === id) ?? null;
           this.debug('Accounts stream emitted', {
             requestedId: id,
-            count: accounts.length,
+            count: sortedAccounts.length,
             found: !!found,
-            sampleIds: accounts.slice(0, 5).map(account => account.id),
           });
           this.account.set(found);
 
-          if (!found) {
-            this.debug('Requested account id not found, navigating back to /accounts', { id });
-            this.router.navigate(['/accounts']);
+          if (id && !found) {
+            this.debug('Requested account id not found, navigating back to /portfolio', { id });
+            this.router.navigate(['/portfolio']);
           }
         },
         error: error => {
@@ -637,20 +680,27 @@ export class AccountDetailsComponent {
     effect(onCleanup => {
       const id = this.accountId();
       if (!id) {
-        this.debug('No account id for cash balance stream, resetting value');
+        this.debug('No account id for portfolio snapshot stream, resetting derived values');
         this.cashBalance.set(0);
+        this.portfolioSnapshot.set(null);
         return;
       }
 
-      this.debug('Subscribing to cash balance stream', { id });
-      const subscription = this.portfolioService.getCashBalance(id).subscribe({
-        next: balance => {
-          this.debug('Cash balance stream emitted', { id, balance });
-          this.cashBalance.set(balance);
+      this.debug('Subscribing to portfolio snapshot stream', { id });
+      const subscription = this.portfolioService.getPortfolioSnapshot(id).subscribe({
+        next: snapshot => {
+          this.debug('Portfolio snapshot stream emitted', {
+            id,
+            holdings: snapshot.holdings.length,
+            cashBalance: snapshot.cashBalance,
+            canDisplayTotals: snapshot.accountPerformance.canDisplayTotals,
+          });
+          this.portfolioSnapshot.set(snapshot);
+          this.cashBalance.set(snapshot.cashBalance);
         },
         error: error => {
-          this.debug('Cash balance stream error', error);
-          this.feedbackMessage = this.errorMessage(error, 'Could not compute cash balance');
+          this.debug('Portfolio snapshot stream error', error);
+          this.feedbackMessage = this.errorMessage(error, 'Could not compute account performance metrics');
         },
       });
       onCleanup(() => subscription.unsubscribe());
@@ -675,6 +725,31 @@ export class AccountDetailsComponent {
           this.feedbackMessage = this.errorMessage(error, 'Could not load symbols');
         },
       });
+      onCleanup(() => subscription.unsubscribe());
+    }, { allowSignalWrites: true });
+
+    effect(onCleanup => {
+      const id = this.accountId();
+      if (!id) {
+        this.debug('No account id for quotes stream, clearing cache');
+        this.quoteBySymbol.set({});
+        return;
+      }
+
+      this.debug('Subscribing to quotes stream', { id });
+      const subscription = this.priceService.getQuotes(id).subscribe({
+        next: quotes => {
+          this.debug('Quotes stream emitted', { id, count: quotes.length });
+          this.quoteBySymbol.set(
+            Object.fromEntries(quotes.map(quote => [quote.symbol.toUpperCase(), quote]))
+          );
+        },
+        error: error => {
+          this.debug('Quotes stream error', error);
+          this.feedbackMessage = this.errorMessage(error, 'Could not load symbol quotes');
+        },
+      });
+
       onCleanup(() => subscription.unsubscribe());
     }, { allowSignalWrites: true });
 
@@ -705,14 +780,24 @@ export class AccountDetailsComponent {
     }, { allowSignalWrites: true });
   }
 
-  goBack(): void {
-    this.router.navigate(['/accounts']);
-  }
-
   onSymbolChanged(symbol: string): void {
     this.cancelAllInlineEdits();
     this.selectedSymbol.set(symbol);
     this.symbolFilterText.set(symbol === 'ALL' ? '' : symbol);
+  }
+
+  onAccountChanged(accountId: string): void {
+    if (!accountId || accountId === this.accountId()) {
+      return;
+    }
+
+    this.cancelAllInlineEdits();
+    this.selectedSymbol.set('ALL');
+    this.selectedContentType.set(null);
+    this.selectedStartDate.set(null);
+    this.selectedEndDate.set(null);
+    this.symbolFilterText.set('');
+    this.router.navigate(['/accounts', accountId]);
   }
 
   onSymbolFilterInput(value: string): void {
@@ -1271,6 +1356,97 @@ export class AccountDetailsComponent {
     }).format(amount);
   }
 
+  formatPercent(value: number | undefined): string {
+    if (value == null) {
+      return 'Unavailable';
+    }
+
+    return new Intl.NumberFormat('en-GB', {
+      style: 'percent',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+
+  formatQuoteTimestamp(value: Date | undefined): string {
+    if (!value) {
+      return 'Unknown';
+    }
+
+    return new Intl.DateTimeFormat('en-GB', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(value);
+  }
+
+  async refreshHeldSymbolQuotes(): Promise<void> {
+    const account = this.account();
+    if (!account || this.isSaving || this.isRefreshingQuotes()) {
+      return;
+    }
+
+    const heldSymbols = this.deriveHeldSymbolsForRefresh();
+
+    this.isRefreshingQuotes.set(true);
+    this.feedbackMessage = '';
+
+    try {
+      const result = await this.priceService.refreshQuotes(account.id, heldSymbols);
+      const total = result.requestedSymbols.length;
+      const updated = result.updatedSymbols.length;
+      const failed = result.failedSymbols.length;
+      this.feedbackMessage = `Quotes refreshed: ${updated}/${total}${failed > 0 ? ` (${failed} missing)` : ''}.`;
+    } catch (error) {
+      this.feedbackMessage = this.errorMessage(error, 'Could not refresh quotes');
+    } finally {
+      this.isRefreshingQuotes.set(false);
+    }
+  }
+
+  private deriveHeldSymbolsForRefresh(): string[] {
+    const snapshot = this.portfolioSnapshot();
+    if (snapshot) {
+      return snapshot.holdings
+        .filter(holding => holding.quantity > 0)
+        .map(holding => holding.symbol);
+    }
+
+    const quantityBySymbol = new Map<string, number>();
+    const chronological = [...this.transactions()]
+      .sort((a, b) => {
+        const aDate = this.toDate(a.date)?.getTime() ?? 0;
+        const bDate = this.toDate(b.date)?.getTime() ?? 0;
+        return aDate - bDate;
+      });
+
+    for (const tx of chronological) {
+      const symbol = this.normalizeSymbol(tx.symbol);
+      if (tx.type === 'buy') {
+        quantityBySymbol.set(symbol, (quantityBySymbol.get(symbol) ?? 0) + tx.quantity);
+        continue;
+      }
+
+      if (tx.type === 'sell') {
+        quantityBySymbol.set(symbol, (quantityBySymbol.get(symbol) ?? 0) - tx.quantity);
+        continue;
+      }
+
+      const toSymbol = this.normalizeSymbol(tx.toSymbol);
+      quantityBySymbol.set(symbol, (quantityBySymbol.get(symbol) ?? 0) - tx.quantity);
+      if (toSymbol) {
+        quantityBySymbol.set(toSymbol, (quantityBySymbol.get(toSymbol) ?? 0) + (tx.toQuantity ?? 0));
+      }
+    }
+
+    return [...quantityBySymbol.entries()]
+      .filter(([, quantity]) => quantity > 0)
+      .map(([symbol]) => symbol)
+      .sort((a, b) => a.localeCompare(b));
+  }
+
   formatNumber(amount: number): string {
     return new Intl.NumberFormat('en-GB', {
       minimumFractionDigits: 2,
@@ -1434,48 +1610,6 @@ export class AccountDetailsComponent {
       this.feedbackMessage = 'Transaction deleted.';
     } catch (error) {
       this.feedbackMessage = this.errorMessage(error, 'Could not delete transaction');
-    } finally {
-      this.isSaving = false;
-    }
-  }
-
-  async openDeleteAccountDialog(): Promise<void> {
-    const account = this.account();
-    if (!account || this.isSaving) {
-      return;
-    }
-
-    const relatedRecordCount =
-      this.transactions().length +
-      this.dividends().length +
-      this.dividendTypes().length +
-      this.cashEvents().length +
-      this.trackedSymbols().length;
-
-    const confirmed = await firstValueFrom(
-      this.dialog
-        .open(AccountDeleteConfirmDialogComponent, {
-          width: '520px',
-          data: {
-            accountName: account.name,
-            relatedRecordCount,
-          },
-        })
-        .afterClosed()
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    this.isSaving = true;
-    this.feedbackMessage = '';
-
-    try {
-      await this.accountService.deleteAccount(account.id);
-      await this.router.navigate(['/accounts']);
-    } catch (error) {
-      this.feedbackMessage = this.errorMessage(error, 'Could not delete account');
     } finally {
       this.isSaving = false;
     }
@@ -1653,6 +1787,7 @@ export class AccountDetailsComponent {
           data: {
             accountCurrency: account.currency,
             symbol,
+            manualQuote: this.quoteBySymbol()[symbol.symbol.toUpperCase()],
           },
         })
         .afterClosed()
@@ -2593,6 +2728,9 @@ export class AccountDetailsComponent {
         symbol: result.symbol,
         fullName: result.fullName,
       });
+
+      await this.saveManualQuote(accountId, result);
+
       this.feedbackMessage = 'Symbol added.';
     } catch (error) {
       this.feedbackMessage = this.errorMessage(error, 'Could not add symbol');
@@ -2614,12 +2752,42 @@ export class AccountDetailsComponent {
         symbol: result.symbol,
         fullName: result.fullName,
       });
+
+      await this.saveManualQuote(accountId, result);
+
       this.feedbackMessage = 'Symbol updated.';
     } catch (error) {
       this.feedbackMessage = this.errorMessage(error, 'Could not update symbol');
     } finally {
       this.isSaving = false;
     }
+  }
+
+  quoteSummaryForSymbol(symbolCode: string): string {
+    const quote = this.quoteBySymbol()[symbolCode.toUpperCase()];
+    if (!quote) {
+      return 'No quote saved';
+    }
+
+    const price = new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: quote.currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    }).format(quote.price);
+
+    return `${price} · ${this.formatQuoteTimestamp(quote.asOf)} · ${quote.provider}`;
+  }
+
+  private async saveManualQuote(accountId: string, result: SymbolDialogResult): Promise<void> {
+    if (!result.manualQuote) {
+      return;
+    }
+
+    await this.priceService.upsertManualQuote(accountId, {
+      symbol: result.symbol,
+      ...result.manualQuote,
+    });
   }
 
   private async createCashEvent(accountId: string, result: CashEventDialogResult): Promise<void> {

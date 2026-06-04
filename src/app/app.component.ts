@@ -33,8 +33,10 @@ export class AppComponent {
 
   navItems = [
     { label: 'Portfolio',     icon: 'show_chart',      route: '/portfolio' },
-    { label: 'Accounts',      icon: 'account_balance_wallet', route: '/accounts' },
+    { label: 'Activity',      icon: 'account_balance_wallet', route: '/accounts' },
     { label: 'Analytics',     icon: 'analytics',       route: '/analytics' },
+    { label: 'Stock Prices',  icon: 'query_stats',     route: '/stock-prices' },
+    { label: 'Accounts',      icon: 'settings',        route: '/accounts/manage' },
   ];
 
   async signOut(): Promise<void> {

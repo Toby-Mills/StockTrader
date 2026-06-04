@@ -1,54 +1,58 @@
-:host {
-	display: block;
-}
+.accounts-container {
+  padding: 16px;
+  max-width: 1000px;
+  margin: 0 auto;
 
-mat-card-content {
-	display: grid;
-	gap: 1rem;
-}
+  .mat-card {
+    background-color: #2c2c2c;
+    border-radius: 12px;
+  }
 
-.actions-row {
-	display: flex;
-	gap: 1rem;
-	align-items: center;
-	flex-wrap: wrap;
-}
+  mat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
 
-.feedback {
-	margin: 0;
-}
+    .page-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0;
 
-.empty-state {
-	margin: 0;
-	color: rgba(0, 0, 0, 0.7);
-}
+      mat-icon {
+        color: #ff9800;
+        width: 32px;
+        height: 32px;
+        font-size: 32px;
+      }
+    }
+  }
 
-.account-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-	gap: 1rem;
-}
+  .accounts-table {
+    width: 100%;
+    background: transparent;
 
-.account-card p {
-	margin: 0.25rem 0;
-}
+    th.mat-header-cell {
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 500;
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
 
-.account-card-title {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.45rem;
-}
+    td.mat-cell {
+      color: rgba(255, 255, 255, 0.87);
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
 
-.account-card-title-icon {
-	color: var(--primary-color, #3f51b5);
-}
+    .actions-cell {
+      text-align: right;
+      white-space: nowrap;
+    }
+  }
 
-.account-card-clickable {
-	cursor: pointer;
-	transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
-}
-
-.account-card-clickable:hover {
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-	transform: translateY(-2px);
+  .no-accounts {
+    text-align: center;
+    padding: 48px;
+    color: rgba(255, 255, 255, 0.6);
+  }
 }

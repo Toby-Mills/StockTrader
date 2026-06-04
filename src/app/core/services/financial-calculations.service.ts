@@ -9,6 +9,19 @@ type CashFlow = {
 
 @Injectable({ providedIn: 'root' })
 export class FinancialCalculationsService {
+  calculateMoneyWeightedReturn(
+    cashFlows: CashFlow[],
+    terminalValue: number,
+    asOfDate: Date = new Date()
+  ): number | undefined {
+    const datedCashFlows = [...cashFlows];
+    if (terminalValue > 0) {
+      datedCashFlows.push({ date: asOfDate, amount: terminalValue });
+    }
+
+    return this.xirr(datedCashFlows);
+  }
+
   calculateEffectiveAnnualGrowthRate(
     transactions: Transaction[],
     dividends: Dividend[],
@@ -26,10 +39,16 @@ export class FinancialCalculationsService {
           date,
           amount: -(tx.quantity * tx.price + (tx.fees ?? 0)),
         });
-      } else {
+      } else if (tx.type === 'sell') {
         cashFlows.push({
           date,
           amount: tx.quantity * tx.price - (tx.fees ?? 0),
+        });
+      } else if ((tx.fees ?? 0) > 0) {
+        // Swaps have no cash impact other than any transaction fee.
+        cashFlows.push({
+          date,
+          amount: -(tx.fees ?? 0),
         });
       }
     }
@@ -47,7 +66,7 @@ export class FinancialCalculationsService {
     return this.xirr(cashFlows);
   }
 
-  private normalizeDate(value: unknown): Date | undefined {
+  toDate(value: unknown): Date | undefined {
     if (value instanceof Date) {
       return Number.isNaN(value.getTime()) ? undefined : value;
     }
@@ -66,6 +85,10 @@ export class FinancialCalculationsService {
     }
 
     return undefined;
+  }
+
+  private normalizeDate(value: unknown): Date | undefined {
+    return this.toDate(value);
   }
 
   private xirr(cashFlows: CashFlow[]): number | undefined {

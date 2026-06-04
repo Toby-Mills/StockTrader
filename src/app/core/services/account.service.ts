@@ -40,7 +40,7 @@ export class AccountService {
     return collectionData(q, { idField: 'id' }) as Observable<Account[]>;
   }
 
-  addAccount(account: Omit<Account, 'id' | 'ownerUid' | 'createdAt'>): Promise<void> {
+  addAccount(account: Omit<Account, 'id' | 'ownerUid' | 'createdAt'>): Promise<string> {
     const ownerUid = this.currentUid();
     const ref = this.accountsRef();
     const payload = stripUndefined({
@@ -48,7 +48,7 @@ export class AccountService {
       ownerUid,
       createdAt: serverTimestamp(),
     });
-    return addDoc(ref, payload).then(() => undefined);
+    return addDoc(ref, payload).then(docRef => docRef.id);
   }
 
   updateAccount(id: string, changes: Partial<Omit<Account, 'id' | 'ownerUid' | 'createdAt'>>): Promise<void> {
@@ -69,6 +69,7 @@ export class AccountService {
       'dividend-types',
       'cash-events',
       'symbols',
+      'price-quotes',
     ];
 
     for (const subcollection of accountSubcollections) {

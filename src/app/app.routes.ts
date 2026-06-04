@@ -13,6 +13,12 @@ export const routes: Routes = [
       import('./features/auth/sign-in.component').then(m => m.SignInComponent),
   },
   {
+    path: 'accounts/manage',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/accounts/accounts.component').then(m => m.AccountsComponent),
+  },
+  {
     path: 'accounts/:id',
     canActivate: [authGuard],
     loadComponent: () =>
@@ -22,7 +28,7 @@ export const routes: Routes = [
     path: 'accounts',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/accounts/accounts.component').then(m => m.AccountsComponent),
+      import('./features/accounts/account-details.component').then(m => m.AccountDetailsComponent),
   },
   {
     path: 'portfolio',
@@ -35,6 +41,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () =>
       import('./features/analytics/analytics.component').then(m => m.AnalyticsComponent),
+  },
+  {
+    path: 'stock-prices',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/symbols/symbols.component').then(m => m.SymbolsComponent),
   },
   { path: '**', redirectTo: '/portfolio' },
 ];

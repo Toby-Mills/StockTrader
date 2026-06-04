@@ -9,6 +9,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AccountService } from '../../core/services/account.service';
+import { PriceQuote } from '../../core/models/price-quote.model';
+import { PriceService } from '../../core/services/price.service';
 import { SymbolCatalogService } from '../../core/services/symbol-catalog.service';
 import { Account } from '../../core/models/account.model';
 import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
@@ -33,6 +35,7 @@ import { SymbolChipComponent } from '../../shared/symbol-chip.component';
 })
 export class SymbolsComponent {
   private readonly accountService = inject(AccountService);
+  private readonly priceService = inject(PriceService);
   private readonly symbolCatalogService = inject(SymbolCatalogService);
   private readonly dialog = inject(MatDialog);
 
@@ -46,6 +49,7 @@ export class SymbolsComponent {
 
   readonly selectedAccountId = signal('');
   readonly symbols = signal<TrackedSymbol[]>([]);
+  readonly quoteBySymbol = signal<Record<string, PriceQuote>>({});
   readonly selectedAccount = computed(
     () => this.accounts().find(account => account.id === this.selectedAccountId()) ?? null
   );
@@ -82,6 +86,27 @@ export class SymbolsComponent {
         },
         error: error => {
           this.feedbackMessage = this.errorMessage(error, 'Could not load symbols');
+        },
+      });
+
+      onCleanup(() => subscription.unsubscribe());
+    });
+
+    effect(onCleanup => {
+      const accountId = this.selectedAccountId();
+      if (!accountId) {
+        this.quoteBySymbol.set({});
+        return;
+      }
+
+      const subscription = this.priceService.getQuotes(accountId).subscribe({
+        next: quotes => {
+          this.quoteBySymbol.set(
+            Object.fromEntries(quotes.map(quote => [quote.symbol.toUpperCase(), quote]))
+          );
+        },
+        error: error => {
+          this.feedbackMessage = this.errorMessage(error, 'Could not load quotes');
         },
       });
 
@@ -129,6 +154,7 @@ export class SymbolsComponent {
           data: {
             accountCurrency: account.currency,
             symbol,
+            manualQuote: this.quoteBySymbol()[symbol.symbol.toUpperCase()],
           },
         })
         .afterClosed()
@@ -181,6 +207,14 @@ export class SymbolsComponent {
         symbol: result.symbol,
         fullName: result.fullName,
       });
+
+      if (result.manualQuote) {
+        await this.priceService.upsertManualQuote(accountId, {
+          symbol: result.symbol,
+          ...result.manualQuote,
+        });
+      }
+
       this.feedbackMessage = 'Symbol added.';
     } catch (error) {
       this.feedbackMessage = this.errorMessage(error, 'Could not add symbol');
@@ -202,6 +236,14 @@ export class SymbolsComponent {
         symbol: result.symbol,
         fullName: result.fullName,
       });
+
+      if (result.manualQuote) {
+        await this.priceService.upsertManualQuote(accountId, {
+          symbol: result.symbol,
+          ...result.manualQuote,
+        });
+      }
+
       this.feedbackMessage = 'Symbol updated.';
     } catch (error) {
       this.feedbackMessage = this.errorMessage(error, 'Could not update symbol');
@@ -213,5 +255,29 @@ export class SymbolsComponent {
   private errorMessage(error: unknown, prefix: string): string {
     const message = error instanceof Error ? error.message : String(error);
     return `${prefix}: ${message}`;
+  }
+
+  quoteLabel(symbolCode: string): string {
+    const quote = this.quoteBySymbol()[symbolCode.toUpperCase()];
+    if (!quote) {
+      return 'No quote saved';
+    }
+
+    return `${new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: quote.currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    }).format(quote.price)} · ${this.formatQuoteTimestamp(quote.asOf)}`;
+  }
+
+  private formatQuoteTimestamp(value: Date): string {
+    return new Intl.DateTimeFormat('en-GB', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(value);
   }
 }

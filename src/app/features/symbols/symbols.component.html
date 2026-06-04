@@ -1,19 +1,20 @@
 <mat-card>
   <mat-card-header>
-    <mat-card-title>Symbols</mat-card-title>
-    <mat-card-subtitle>Track ticker symbols and display names per account.</mat-card-subtitle>
+    <mat-card-title class="section-title">
+      <mat-icon>query_stats</mat-icon>
+      <span>Stock Prices</span>
+    </mat-card-title>
+    <mat-card-subtitle>Track stock/fund symbols and their latest quotes per account.</mat-card-subtitle>
   </mat-card-header>
 
   <mat-card-content>
     @if (!accounts().length) {
-      <p class="empty-state">Create an account first to manage symbols.</p>
+      <p class="empty-state">Create an account first to manage stock prices.</p>
     } @else {
-      <div class="toolbar-row">
-        <mat-form-field appearance="outline" class="account-field">
+      <section class="toolbar-row">
+        <mat-form-field appearance="outline">
           <mat-label>Account</mat-label>
-          <mat-select
-            [value]="selectedAccountId()"
-            (valueChange)="onAccountChanged($event)">
+          <mat-select [value]="selectedAccountId()" (valueChange)="onAccountChanged($event)">
             @for (account of accounts(); track account.id) {
               <mat-option [value]="account.id">
                 {{ account.name }} ({{ account.currency }})
@@ -24,32 +25,41 @@
 
         <button mat-raised-button color="primary" type="button" (click)="openAddDialog()" [disabled]="isSaving">
           <mat-icon>add</mat-icon>
-          Add Symbol
+          Add Stock/Fund
         </button>
-      </div>
+      </section>
 
       @if (feedbackMessage) {
         <p class="feedback">{{ feedbackMessage }}</p>
       }
 
       @if (!symbols().length) {
-        <p class="empty-state">No symbols yet for this account.</p>
+        <p class="empty-state">No symbols added yet for this account.</p>
       } @else {
-        <div class="symbols-grid">
-          @for (symbol of symbols(); track symbol.id) {
-            <mat-card class="symbol-card" appearance="outlined">
-              <mat-card-header>
-                <mat-card-title>
-                  <app-symbol-chip [symbol]="symbol.symbol" />
-                </mat-card-title>
-                <mat-card-subtitle>{{ symbol.fullName }}</mat-card-subtitle>
-              </mat-card-header>
-              <mat-card-actions align="end">
-                <button mat-button type="button" (click)="openEditDialog(symbol)" [disabled]="isSaving">Edit</button>
-                <button mat-button type="button" (click)="deleteSymbol(symbol)" [disabled]="isSaving">Remove</button>
-              </mat-card-actions>
-            </mat-card>
-          }
+        <div class="table-wrap">
+          <table class="symbols-table">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Display Name</th>
+                <th>Quote</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (symbol of symbols(); track symbol.id) {
+                <tr>
+                  <td><app-symbol-chip [symbol]="symbol.symbol" /></td>
+                  <td>{{ symbol.fullName }}</td>
+                  <td>{{ quoteLabel(symbol.symbol) }}</td>
+                  <td class="actions-cell">
+                    <button mat-button type="button" (click)="openEditDialog(symbol)" [disabled]="isSaving">Edit</button>
+                    <button mat-button type="button" (click)="deleteSymbol(symbol)" [disabled]="isSaving">Remove</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
       }
     }

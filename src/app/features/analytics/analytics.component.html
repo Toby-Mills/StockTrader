@@ -1,8 +1,304 @@
 <mat-card>
   <mat-card-header>
-    <mat-card-title>Analytics</mat-card-title>
+    <mat-card-title class="section-title">
+      <mat-icon>analytics</mat-icon>
+      <span>Analytics</span>
+    </mat-card-title>
   </mat-card-header>
+
   <mat-card-content>
-    <p>Analytics — coming soon.</p>
+    @if (!hasAccounts()) {
+      <p class="empty-state">
+        You do not have any accounts yet. Create an account first to view analytics.
+      </p>
+    } @else {
+      <section class="toolbar-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Account</mat-label>
+          <mat-select [value]="selectedAccountId()" (valueChange)="onAccountChanged($event)">
+            @for (account of accounts(); track account.id) {
+              <mat-option [value]="account.id">
+                {{ account.name }} ({{ account.currency }})
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Filter by Stock/Fund</mat-label>
+          <mat-select [value]="selectedSymbol()" (valueChange)="onSymbolChanged($event)">
+            <mat-select-trigger>
+              @if (selectedSymbol() === 'ALL') {
+                <span>All symbols</span>
+              } @else {
+                <span class="symbol-option-content">
+                  <app-symbol [symbol]="selectedSymbol()" />
+                  @if (symbolNameByCode().get(selectedSymbol()); as fullName) {
+                    <span class="symbol-option-name">{{ fullName }}</span>
+                  }
+                </span>
+              }
+            </mat-select-trigger>
+
+            <mat-option value="ALL">All symbols</mat-option>
+            @for (symbol of symbols(); track symbol) {
+              <mat-option [value]="symbol" class="symbol-option">
+                <span class="symbol-option-content">
+                  <app-symbol [symbol]="symbol" />
+                  @if (symbolNameByCode().get(symbol); as fullName) {
+                    <span class="symbol-option-name">{{ fullName }}</span>
+                  }
+                </span>
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </section>
+
+      @if (feedbackMessage()) {
+        <p class="feedback">{{ feedbackMessage() }}</p>
+      }
+
+      @if (selectedAccount(); as acc) {
+        <section class="performance-summary" aria-label="Account performance summary">
+          <header class="performance-summary-header">
+            <div>
+              <p class="performance-kicker">Account Performance</p>
+              @if (accountPerformance()?.lastQuoteUpdatedAt; as quoteTime) {
+                <p class="quote-updated-at">Last quote update: {{ formatQuoteTimestamp(quoteTime) }}</p>
+              }
+            </div>
+
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="refreshHeldSymbolQuotes()"
+              [disabled]="isRefreshingQuotes()"
+            >
+              <mat-icon>refresh</mat-icon>
+              {{ isRefreshingQuotes() ? 'Refreshing prices...' : 'Refresh prices' }}
+            </button>
+          </header>
+
+          @if (accountPerformance(); as performance) {
+            @if (!performance.canDisplayTotals) {
+              <div class="missing-quotes-warning">
+                <p>Account totals are hidden until all held symbols have fresh quotes.</p>
+                @if (performance.missingQuoteSymbols.length > 0) {
+                  <p>Missing or stale: {{ performance.missingQuoteSymbols.join(', ') }}</p>
+                }
+              </div>
+            } @else {
+              <div class="performance-grid">
+                <div>
+                  <p class="metric-label">Invested (net contributions)</p>
+                  <p class="metric-value">{{ formatMoney(performance.investedAmount, acc.currency) }}</p>
+                </div>
+                <div>
+                  <p class="metric-label">Market value</p>
+                  <p class="metric-value">{{ formatMoney(performance.marketValue ?? 0, acc.currency) }}</p>
+                </div>
+                <div>
+                  <p class="metric-label">Cash balance</p>
+                  <p class="metric-value">{{ formatMoney(performance.cashBalance, acc.currency) }}</p>
+                </div>
+                <div>
+                  <p class="metric-label">Realized P/L</p>
+                  <p class="metric-value" [class.cash-out]="(performance.realizedProfitLoss ?? 0) < 0">
+                    {{ formatMoney(performance.realizedProfitLoss ?? 0, acc.currency) }}
+                  </p>
+                </div>
+                <div>
+                  <p class="metric-label">Unrealized P/L</p>
+                  <p class="metric-value" [class.cash-out]="(performance.unrealizedProfitLoss ?? 0) < 0">
+                    {{ formatMoney(performance.unrealizedProfitLoss ?? 0, acc.currency) }}
+                  </p>
+                </div>
+                <div>
+                  <p class="metric-label">Total return</p>
+                  <p class="metric-value" [class.cash-out]="(performance.totalReturnAmount ?? 0) < 0">
+                    {{ formatMoney(performance.totalReturnAmount ?? 0, acc.currency) }}
+                    <span class="secondary-value">({{ formatPercent(performance.totalReturnPercent) }})</span>
+                  </p>
+                </div>
+                <div>
+                  <p class="metric-label">MWRR</p>
+                  <p class="metric-value">{{ formatPercent(performance.moneyWeightedReturn) }}</p>
+                </div>
+              </div>
+            }
+          } @else {
+            <div class="missing-quotes-warning">
+              <p>Performance data is loading or unavailable, but you can still refresh prices.</p>
+            </div>
+          }
+        </section>
+
+        <section class="holdings-valuation" aria-label="Holdings valuation table">
+          <header class="holdings-valuation-header">
+            <h2>Holdings valuation</h2>
+          </header>
+
+          @if (holdingsValuation().length === 0) {
+            <p class="empty-state">No currently held symbols.</p>
+          } @else {
+            <div class="table-wrap">
+              <table class="tx-table holdings-table">
+                <thead>
+                  <tr>
+                    <th>Symbol</th>
+                    <th class="numeric-col">Quantity</th>
+                    <th class="numeric-col">Average cost</th>
+                    <th class="numeric-col">Current price</th>
+                    <th class="numeric-col">Market value</th>
+                    <th class="numeric-col">Unrealized P/L</th>
+                    <th class="numeric-col">Unrealized %</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  @for (holding of holdingsValuation(); track holding.symbol) {
+                    <tr>
+                      <td><app-symbol [symbol]="holding.symbol" /></td>
+                      <td class="numeric-col">{{ holding.quantity.toFixed(4) }}</td>
+                      <td class="numeric-col">{{ formatMoney(holding.averageCost, acc.currency) }}</td>
+                      <td class="numeric-col">
+                        @if (holding.currentPrice != null) {
+                          {{ formatMoney(holding.currentPrice, acc.currency) }}
+                        } @else {
+                          Missing
+                        }
+                      </td>
+                      <td class="numeric-col">
+                        @if (holding.currentValue != null) {
+                          {{ formatMoney(holding.currentValue, acc.currency) }}
+                        } @else {
+                          Missing
+                        }
+                      </td>
+                      <td class="numeric-col" [class.cash-out]="(holding.unrealizedGainLoss ?? 0) < 0">
+                        @if (holding.unrealizedGainLoss != null) {
+                          {{ formatMoney(holding.unrealizedGainLoss, acc.currency) }}
+                        } @else {
+                          Missing
+                        }
+                      </td>
+                      <td class="numeric-col" [class.cash-out]="(holding.unrealizedGainLossPercent ?? 0) < 0">
+                        @if (holding.unrealizedGainLossPercent != null) {
+                          {{ formatPercent(holding.unrealizedGainLossPercent) }}
+                        } @else {
+                          Missing
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+
+        @if (selectedSymbolPerformance(); as symbolPerformance) {
+          <section class="balance-sheet" aria-label="Symbol performance summary">
+            <header class="balance-sheet-header">
+              <p class="balance-sheet-kicker">Symbol Performance</p>
+              <h2>
+                <span class="symbol-option-content">
+                  <app-symbol [symbol]="symbolPerformance.symbol" />
+                  @if (symbolNameByCode().get(symbolPerformance.symbol); as fullName) {
+                    <span class="symbol-option-name">{{ fullName }}</span>
+                  }
+                </span>
+              </h2>
+            </header>
+
+            <div class="balance-sheet-table" role="table" aria-label="Symbol performance values">
+              <div class="balance-sheet-row" role="row">
+                <p role="cell">Invested basis</p>
+                <p role="cell">{{ formatMoney(symbolPerformance.investedBasis, acc.currency) }}</p>
+                <p role="cell"></p>
+              </div>
+              <div class="balance-sheet-row" role="row">
+                <p role="cell">Market value</p>
+                <p role="cell">
+                  @if (symbolPerformance.marketValue != null) {
+                    {{ formatMoney(symbolPerformance.marketValue, acc.currency) }}
+                  } @else {
+                    Missing quote
+                  }
+                </p>
+                <p role="cell"></p>
+              </div>
+              <div class="balance-sheet-row" role="row">
+                <p role="cell">Realized P/L</p>
+                <p role="cell" [class.cash-out]="symbolPerformance.realizedProfitLoss < 0">
+                  {{ formatMoney(symbolPerformance.realizedProfitLoss, acc.currency) }}
+                </p>
+                <p role="cell"></p>
+              </div>
+              <div class="balance-sheet-row" role="row">
+                <p role="cell">Unrealized P/L</p>
+                <p role="cell" [class.cash-out]="(symbolPerformance.unrealizedProfitLoss ?? 0) < 0">
+                  @if (symbolPerformance.unrealizedProfitLoss != null) {
+                    {{ formatMoney(symbolPerformance.unrealizedProfitLoss, acc.currency) }}
+                  } @else {
+                    Missing quote
+                  }
+                </p>
+                <p role="cell"></p>
+              </div>
+              <div class="balance-sheet-row" role="row">
+                <p role="cell">Total return</p>
+                <p role="cell" [class.cash-out]="(symbolPerformance.totalReturnAmount ?? 0) < 0">
+                  @if (symbolPerformance.totalReturnAmount != null) {
+                    {{ formatMoney(symbolPerformance.totalReturnAmount, acc.currency) }}
+                    <span class="secondary-value">({{ formatPercent(symbolPerformance.totalReturnPercent) }})</span>
+                  } @else {
+                    Missing quote
+                  }
+                </p>
+                <p role="cell"></p>
+              </div>
+              <div class="balance-sheet-row total" role="row">
+                <p role="cell">Symbol MWRR</p>
+                <p role="cell">
+                  @if (symbolPerformance.moneyWeightedReturn != null) {
+                    {{ formatPercent(symbolPerformance.moneyWeightedReturn) }}
+                  } @else {
+                    Missing quote
+                  }
+                </p>
+                <p role="cell"></p>
+              </div>
+            </div>
+
+            <div class="table-wrap cash-flow-drilldown">
+              <table class="cash-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th class="numeric-col">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (cashFlow of symbolPerformance.cashFlows; track $index) {
+                    <tr>
+                      <td>{{ formatDate(cashFlow.date) }}</td>
+                      <td>{{ cashFlow.label }}</td>
+                      <td class="numeric-col" [class.cash-out]="cashFlow.amount < 0">
+                        {{ formatMoney(cashFlow.amount, acc.currency) }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        } @else {
+          <p class="empty-state">Select a symbol to view Symbol Performance and Symbol MWRR.</p>
+        }
+      }
+    }
   </mat-card-content>
 </mat-card>

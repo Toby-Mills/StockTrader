@@ -11,9 +11,16 @@ export interface Holding {
   netInvestedAmount?: number;
   // Annualized money-weighted growth rate (decimal), derived from dated cash flows.
   effectiveAnnualGrowthRate?: number;
+  realizedGainLoss?: number;
   // Populated when live prices are available
   currentPrice?: number;
   currentValue?: number;
+  quoteAsOf?: Date;
+  quoteFetchedAt?: Date;
+  quoteIsFresh?: boolean;
+  quoteIsMissing?: boolean;
+  unrealizedGainLoss?: number;
+  unrealizedGainLossPercent?: number;
   gainLoss?: number;
   gainLossPercent?: number;
   totalDividends?: number;

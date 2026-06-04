@@ -4,3 +4,16 @@
   gap: 1rem;
   min-width: min(32rem, 100%);
 }
+
+.manual-quote-group {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.manual-quote-title {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(0, 0, 0, 0.7);
+}

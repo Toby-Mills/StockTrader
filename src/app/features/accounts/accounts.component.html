@@ -1,43 +1,61 @@
-<mat-card>
-  <mat-card-header>
-    <mat-card-title>Your Accounts</mat-card-title>
-  </mat-card-header>
-  <mat-card-content>
-    <div class="actions-row">
-      <button mat-raised-button color="primary" type="button" (click)="openAddDialog()" [disabled]="isSaving">
-        <mat-icon>add</mat-icon>
-        Add Account
-      </button>
-      @if (feedbackMessage) {
-        <p class="feedback">{{ feedbackMessage }}</p>
-      }
-    </div>
-
-    @if (accounts().length === 0) {
-      <p class="empty-state">No accounts yet. Add your first account to get started.</p>
-    } @else {
-      <div class="account-grid">
-      @for (account of accounts(); track account.id) {
-        <mat-card class="account-card account-card-clickable" appearance="outlined" (click)="viewAccountDetails(account.id)">
-            <mat-card-header>
-              <mat-card-title class="account-card-title">
-                <mat-icon class="account-card-title-icon">account_balance_wallet</mat-icon>
-                <span>{{ account.name }}</span>
-              </mat-card-title>
-              <mat-card-subtitle>{{ account.currency }}</mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
-              <p><strong>Platform:</strong> {{ account.platform || account.broker || 'Not set' }}</p>
-              <p><strong>Account Number:</strong> {{ account.accountNumber || 'Not set' }}</p>
-            </mat-card-content>
-            <mat-card-actions align="end">
-              <button mat-button type="button" (click)="openEditDialog(account); $event.stopPropagation()" [disabled]="isSaving">
-                Edit
-              </button>
-            </mat-card-actions>
-          </mat-card>
-        }
+<div class="accounts-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title class="page-title">
+        <mat-icon>settings</mat-icon>
+        <span>Account Maintenance</span>
+      </mat-card-title>
+      <div class="header-actions">
+        <button mat-flat-button color="primary" (click)='addAccount()'>
+          <mat-icon>add</mat-icon>
+          <span>Add Account</span>
+        </button>
       </div>
-    }
-  </mat-card-content>
-</mat-card>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (hasAccounts()) {
+        <table mat-table [dataSource]="accounts()" class="accounts-table">
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let account">{{ account.name }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="platform">
+            <th mat-header-cell *matHeaderCellDef>Platform</th>
+            <td mat-cell *matCellDef="let account">{{ account.platform || '-' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="accountNumber">
+            <th mat-header-cell *matHeaderCellDef>Account #</th>
+            <td mat-cell *matCellDef="let account">{{ account.accountNumber || '-' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="currency">
+            <th mat-header-cell *matHeaderCellDef>Currency</th>
+            <td mat-cell *matCellDef="let account">{{ account.currency }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let account" class="actions-cell">
+              <button mat-icon-button (click)="editAccount(account)" matTooltip="Edit account">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" (click)="deleteAccount(account)" matTooltip="Delete account">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+      } @else {
+        <div class="no-accounts">
+          <p>No accounts found. Click "Add Account" to get started.</p>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>
