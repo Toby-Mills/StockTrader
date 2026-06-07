@@ -32,8 +32,8 @@ import { SymbolCatalogService } from '../../core/services/symbol-catalog.service
 import { TransactionService } from '../../core/services/transaction.service';
 import { sortByDateAndCreatedAt } from '../../core/utils/record-sort';
 import { CashEventDialogComponent, CashEventDialogResult } from './cash-event-dialog.component';
-import { AccountDeleteConfirmDialogComponent } from './account-delete-confirm-dialog.component';
-import { AccountDialogComponent, AccountDialogResult } from './account-dialog.component';
+import { AccountDeleteConfirmDialogComponent } from '../accounts/account-delete-confirm-dialog.component';
+import { AccountDialogComponent, AccountDialogResult } from '../accounts/account-dialog.component';
 import { DividendDialogComponent, DividendDialogResult } from '../dividends/dividend-dialog.component';
 import { SymbolDialogComponent, SymbolDialogResult } from '../symbols/symbol-dialog.component';
 import { TransactionDialogComponent, TransactionDialogResult } from '../transactions/transaction-dialog.component';
@@ -117,7 +117,7 @@ interface SymbolFilterOption {
 }
 
 @Component({
-  selector: 'app-account-details',
+  selector: 'app-activity',
   standalone: true,
   imports: [
     CommonModule,
@@ -135,10 +135,10 @@ interface SymbolFilterOption {
     MatDialogModule,
     SymbolComponent,
   ],
-  templateUrl: './account-details.component.html',
-  styleUrl: './account-details.component.scss',
+  templateUrl: './activity.component.html',
+  styleUrl: './activity.component.scss',
 })
-export class AccountDetailsComponent {
+export class ActivityComponent {
   private static readonly CSV_DIVIDEND_TYPES: readonly CsvTransactionKind[] = [
     'Dividend',
     'Foreign Dividends',
@@ -151,7 +151,7 @@ export class AccountDetailsComponent {
     'Purchase',
     'Sell',
     'Sale',
-    ...AccountDetailsComponent.CSV_DIVIDEND_TYPES,
+    ...ActivityComponent.CSV_DIVIDEND_TYPES,
   ];
 
   private static readonly CSV_HEADER_LINES = 1;
@@ -2074,11 +2074,11 @@ export class AccountDetailsComponent {
       .split(/\r?\n/)
       .filter(line => line.trim().length > 0);
 
-    if (lines.length <= AccountDetailsComponent.CSV_HEADER_LINES) {
+    if (lines.length <= ActivityComponent.CSV_HEADER_LINES) {
       return [];
     }
 
-    const dataLines = lines.slice(AccountDetailsComponent.CSV_HEADER_LINES);
+    const dataLines = lines.slice(ActivityComponent.CSV_HEADER_LINES);
     const parsedRows: ParsedCsvRow[] = [];
 
     for (let index = 0; index < dataLines.length; index += 1) {
@@ -2086,7 +2086,7 @@ export class AccountDetailsComponent {
       const columns = this.parseCsvLine(line);
 
       const transactionRaw = (columns[3] ?? '').trim();
-      if (!AccountDetailsComponent.CSV_TRANSACTION_TYPES.includes(transactionRaw as CsvTransactionKind)) {
+      if (!ActivityComponent.CSV_TRANSACTION_TYPES.includes(transactionRaw as CsvTransactionKind)) {
         continue;
       }
 
@@ -2099,7 +2099,7 @@ export class AccountDetailsComponent {
       }
 
       parsedRows.push({
-        rowNumber: AccountDetailsComponent.CSV_HEADER_LINES + index + 1,
+        rowNumber: ActivityComponent.CSV_HEADER_LINES + index + 1,
         date,
         ticker,
         name,
@@ -2284,7 +2284,7 @@ export class AccountDetailsComponent {
 
     const result = new Map<string, string>();
 
-    for (const typeName of AccountDetailsComponent.CSV_DIVIDEND_TYPES) {
+    for (const typeName of ActivityComponent.CSV_DIVIDEND_TYPES) {
       const existingId = byName.get(typeName.toLowerCase());
       if (existingId) {
         result.set(typeName, existingId);

@@ -22,13 +22,13 @@ export const routes: Routes = [
     path: 'accounts/:id',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/accounts/account-details.component').then(m => m.AccountDetailsComponent),
+      import('./features/activity/activity.component').then(m => m.ActivityComponent),
   },
   {
     path: 'accounts',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/accounts/account-details.component').then(m => m.AccountDetailsComponent),
+      import('./features/activity/activity.component').then(m => m.ActivityComponent),
   },
   {
     path: 'portfolio',
