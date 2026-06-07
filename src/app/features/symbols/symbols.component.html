@@ -4,10 +4,10 @@
       <mat-icon>query_stats</mat-icon>
       <span>Stock Prices</span>
     </mat-card-title>
-    <mat-card-subtitle>Track stock/fund symbols and their latest quotes per account.</mat-card-subtitle>
   </mat-card-header>
 
   <mat-card-content>
+    <br />
     @if (!accounts().length) {
       <p class="empty-state">Create an account first to manage stock prices.</p>
     } @else {

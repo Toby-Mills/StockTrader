@@ -56,6 +56,10 @@
   background-color: rgba(0, 0, 0, 0.08);
 }
 
+mat-icon[matListItemIcon] {
+  color: #ff9800;
+}
+
 .public-content {
   min-height: calc(100vh - 64px);
 }

@@ -13,7 +13,14 @@
 .section-title {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 12px;
+
+  mat-icon {
+    color: #ff9800;
+    width: 32px;
+    height: 32px;
+    font-size: 32px;
+  }
 }
 
 .table-wrap {
