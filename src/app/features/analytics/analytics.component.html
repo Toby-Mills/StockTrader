@@ -24,36 +24,6 @@
             }
           </mat-select>
         </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Filter by Stock/Fund</mat-label>
-          <mat-select [value]="selectedSymbol()" (valueChange)="onSymbolChanged($event)">
-            <mat-select-trigger>
-              @if (selectedSymbol() === 'ALL') {
-                <span>All symbols</span>
-              } @else {
-                <span class="symbol-option-content">
-                  <app-symbol [symbol]="selectedSymbol()" />
-                  @if (symbolNameByCode().get(selectedSymbol()); as fullName) {
-                    <span class="symbol-option-name">{{ fullName }}</span>
-                  }
-                </span>
-              }
-            </mat-select-trigger>
-
-            <mat-option value="ALL">All symbols</mat-option>
-            @for (symbol of symbols(); track symbol) {
-              <mat-option [value]="symbol" class="symbol-option">
-                <span class="symbol-option-content">
-                  <app-symbol [symbol]="symbol" />
-                  @if (symbolNameByCode().get(symbol); as fullName) {
-                    <span class="symbol-option-name">{{ fullName }}</span>
-                  }
-                </span>
-              </mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
       </section>
 
       @if (feedbackMessage()) {
@@ -61,44 +31,79 @@
       }
 
       @if (selectedAccount(); as acc) {
-        <section class="performance-summary" aria-label="Account performance summary">
-          <header class="performance-summary-header">
-            <div>
-              <p class="performance-kicker">Account Performance</p>
-              @if (accountPerformance()?.lastQuoteUpdatedAt; as quoteTime) {
-                <p class="quote-updated-at">Last quote update: {{ formatQuoteTimestamp(quoteTime) }}</p>
-              }
-            </div>
+        <mat-tab-group>
+          <mat-tab label="Current">
+            <div class="tab-content">
+              <section class="toolbar-row secondary-toolbar">
+                <mat-form-field appearance="outline">
+                  <mat-label>Filter by Stock/Fund</mat-label>
+                  <mat-select [value]="selectedSymbol()" (valueChange)="onSymbolChanged($event)">
+                    <mat-select-trigger>
+                      @if (selectedSymbol() === 'ALL') {
+                        <span>All symbols</span>
+                      } @else {
+                        <span class="symbol-option-content">
+                          <app-symbol [symbol]="selectedSymbol()" />
+                          @if (symbolNameByCode().get(selectedSymbol()); as fullName) {
+                            <span class="symbol-option-name">{{ fullName }}</span>
+                          }
+                        </span>
+                      }
+                    </mat-select-trigger>
 
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="refreshHeldSymbolQuotes()"
-              [disabled]="isRefreshingQuotes()"
-            >
-              <mat-icon>refresh</mat-icon>
-              {{ isRefreshingQuotes() ? 'Refreshing prices...' : 'Refresh prices' }}
-            </button>
-          </header>
+                    <mat-option value="ALL">All symbols</mat-option>
+                    @for (symbol of symbols(); track symbol) {
+                      <mat-option [value]="symbol" class="symbol-option">
+                        <span class="symbol-option-content">
+                          <app-symbol [symbol]="symbol" />
+                          @if (symbolNameByCode().get(symbol); as fullName) {
+                            <span class="symbol-option-name">{{ fullName }}</span>
+                          }
+                        </span>
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </section>
 
-          @if (accountPerformance(); as performance) {
-            @if (!performance.canDisplayTotals) {
-              <div class="missing-quotes-warning">
-                <p>Account totals are hidden until all held symbols have fresh quotes.</p>
-                @if (performance.missingQuoteSymbols.length > 0) {
-                  <p>Missing or stale: {{ performance.missingQuoteSymbols.join(', ') }}</p>
-                }
-              </div>
-            } @else {
-              <div class="performance-grid">
-                <div>
-                  <p class="metric-label">Invested (net contributions)</p>
-                  <p class="metric-value">{{ formatMoney(performance.investedAmount, acc.currency) }}</p>
-                </div>
-                <div>
-                  <p class="metric-label">Market value</p>
-                  <p class="metric-value">{{ formatMoney(performance.marketValue ?? 0, acc.currency) }}</p>
-                </div>
+              <section class="performance-summary" aria-label="Account performance summary">
+                <header class="performance-summary-header">
+                  <div>
+                    <p class="performance-kicker">Account Performance</p>
+                    @if (accountPerformance()?.lastQuoteUpdatedAt; as quoteTime) {
+                      <p class="quote-updated-at">Last quote update: {{ formatQuoteTimestamp(quoteTime) }}</p>
+                    }
+                  </div>
+
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="refreshHeldSymbolQuotes()"
+                    [disabled]="isRefreshingQuotes()"
+                  >
+                    <mat-icon>refresh</mat-icon>
+                    {{ isRefreshingQuotes() ? 'Refreshing prices...' : 'Refresh prices' }}
+                  </button>
+                </header>
+
+                @if (accountPerformance(); as performance) {
+                  @if (!performance.canDisplayTotals) {
+                    <div class="missing-quotes-warning">
+                      <p>Account totals are hidden until all held symbols have fresh quotes.</p>
+                      @if (performance.missingQuoteSymbols.length > 0) {
+                        <p>Missing or stale: {{ performance.missingQuoteSymbols.join(', ') }}</p>
+                      }
+                    </div>
+                  } @else {
+                    <div class="performance-grid">
+                      <div>
+                        <p class="metric-label">Invested (net contributions)</p>
+                        <p class="metric-value">{{ formatMoney(performance.investedAmount, acc.currency) }}</p>
+                      </div>
+                      <div>
+                        <p class="metric-label">Market value</p>
+                        <p class="metric-value">{{ formatMoney(performance.marketValue ?? 0, acc.currency) }}</p>
+                      </div>
                 <div>
                   <p class="metric-label">Cash balance</p>
                   <p class="metric-value">{{ formatMoney(performance.cashBalance, acc.currency) }}</p>
@@ -299,6 +304,17 @@
         } @else {
           <p class="empty-state">Select a symbol to view Symbol Performance and Symbol MWRR.</p>
         }
+            </div>
+          </mat-tab>
+          <mat-tab label="History">
+            <div class="tab-content">
+              <app-account-history
+                [accountId]="acc.id"
+                [currency]="acc.currency"
+              />
+            </div>
+          </mat-tab>
+        </mat-tab-group>
       }
     }
   </mat-card-content>

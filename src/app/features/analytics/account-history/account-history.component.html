@@ -1,0 +1,80 @@
+<div class="history-toolbar">
+  <button mat-raised-button color="primary" (click)="onAddSnapshot()">
+    <mat-icon>add_a_photo</mat-icon>
+    Record Value
+  </button>
+</div>
+
+@if (historyState(); as state) {
+  <div class="chart-container">
+    <canvas
+      baseChart
+      [data]="state.chartData"
+      [options]="chartOptions"
+      [type]="'line'"
+    >
+    </canvas>
+  </div>
+
+  <section class="snapshot-list">
+    <header class="section-header">
+      <h3>Snapshots</h3>
+    </header>
+
+    <div class="table-wrap">
+      <table mat-table [dataSource]="state.snapshots" class="snapshot-table">
+        <!-- Date Column -->
+        <ng-container matColumnDef="date">
+          <th mat-header-cell *matHeaderCellDef> Date </th>
+          <td mat-cell *matCellDef="let snapshot"> {{ formatDate(snapshot.date) }} </td>
+        </ng-container>
+
+        <!-- Stock Value Column -->
+        <ng-container matColumnDef="stockValue">
+          <th mat-header-cell *matHeaderCellDef class="numeric-col"> Stock Value </th>
+          <td mat-cell *matCellDef="let snapshot" class="numeric-col"> {{ formatMoney(snapshot.stockValue) }} </td>
+        </ng-container>
+
+        <!-- Cash Column -->
+        <ng-container matColumnDef="cashBalance">
+          <th mat-header-cell *matHeaderCellDef class="numeric-col"> Cash </th>
+          <td mat-cell *matCellDef="let snapshot" class="numeric-col"> {{ formatMoney(snapshot.cashBalance) }} </td>
+        </ng-container>
+
+        <!-- Total Account Value Column -->
+        <ng-container matColumnDef="totalAccountValue">
+          <th mat-header-cell *matHeaderCellDef class="numeric-col"> Account Value </th>
+          <td mat-cell *matCellDef="let snapshot" class="numeric-col"> {{ formatMoney(snapshot.totalAccountValue) }} </td>
+        </ng-container>
+
+        <!-- Invested Amount Column -->
+        <ng-container matColumnDef="investedAmount">
+          <th mat-header-cell *matHeaderCellDef class="numeric-col"> Total Invested </th>
+          <td mat-cell *matCellDef="let snapshot" class="numeric-col"> {{ formatMoney(snapshot.investedAmount) }} </td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef> </th>
+          <td mat-cell *matCellDef="let snapshot">
+            <button mat-icon-button (click)="onEditSnapshot(snapshot)" title="Edit record">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="onDeleteSnapshot(snapshot)" title="Delete record">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </div>
+
+    @if (state.snapshots.length === 0) {
+      <p class="empty-state">No snapshots taken for this account yet. Click "Record Value" to start tracking history.</p>
+    }
+  </section>
+} @else {
+  <p class="loading-state">Loading history data...</p>
+}

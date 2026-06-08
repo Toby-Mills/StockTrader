@@ -70,6 +70,7 @@ export class AccountService {
       'cash-events',
       'symbols',
       'price-quotes',
+      'snapshots',
     ];
 
     for (const subcollection of accountSubcollections) {

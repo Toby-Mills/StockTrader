@@ -1,0 +1,31 @@
+<h2 mat-dialog-title>{{ isEdit ? 'Edit Record' : 'Record Account Value' }}</h2>
+
+<mat-dialog-content>
+  <p class="hint">
+    Enter the total market value of your stocks/funds as of this date. 
+    Cash balance and invested amounts will be re-calculated automatically based on your transaction history.
+  </p>
+
+  <form [formGroup]="form">
+    <mat-form-field appearance="outline">
+      <mat-label>Date</mat-label>
+      <input matInput [matDatepicker]="picker" formControlName="date">
+      <mat-hint>MM/DD/YYYY</mat-hint>
+      <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-datepicker #picker></mat-datepicker>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Total Stock Market Value ({{ data.currency }})</mat-label>
+      <input matInput type="number" formControlName="stockValue" step="0.01">
+      <mat-icon matPrefix>account_balance_wallet</mat-icon>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onSave()" [disabled]="form.invalid">
+    {{ isEdit ? 'Update' : 'Save Value' }}
+  </button>
+</mat-dialog-actions>

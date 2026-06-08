@@ -481,6 +481,30 @@ export class PortfolioService {
     }, 0);
   }
 
+  /** Compute total invested amount (Deposits - Withdrawals) as of a specific date. */
+  computeInvestedAmount(
+    cashEvents: CashEvent[],
+    asOfDate?: Date
+  ): number {
+    return cashEvents
+      .filter(event => {
+        if (!asOfDate) {
+          return true;
+        }
+        const date = this.financialCalculations.toDate(event.date);
+        return date ? date.getTime() <= asOfDate.getTime() : false;
+      })
+      .reduce((sum, event) => {
+        if (event.type === 'deposit') {
+          return sum + event.amount;
+        }
+        if (event.type === 'withdrawal') {
+          return sum - event.amount;
+        }
+        return sum;
+      }, 0);
+  }
+
   private buildAccountCashFlows(
     transactions: Transaction[],
     dividends: Dividend[],
@@ -555,10 +579,12 @@ export class PortfolioService {
     return (symbol ?? '').trim().toUpperCase();
   }
 
-  private computeCashBalance(
+  /** Compute the cash balance as of a specific date. */
+  computeCashBalance(
     transactions: Transaction[],
     dividends: Dividend[],
-    cashEvents: CashEvent[]
+    cashEvents: CashEvent[],
+    asOfDate?: Date
   ): number {
     type LedgerEvent =
       | { source: 'transaction'; date: unknown; createdAt?: unknown; originalIndex: number; transaction: Transaction }
@@ -600,6 +626,13 @@ export class PortfolioService {
 
     let cashBalance = 0;
     for (const event of events) {
+      if (asOfDate) {
+        const eventDate = this.financialCalculations.toDate(event.date);
+        if (eventDate && eventDate > asOfDate) {
+          continue;
+        }
+      }
+
       if (event.source === 'transaction') {
         const tx = event.transaction;
         if (tx.type === 'swap') {

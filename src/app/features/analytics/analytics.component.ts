@@ -6,6 +6,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTabsModule } from '@angular/material/tabs';
 import { Account } from '../../core/models/account.model';
 import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
 import { AccountService } from '../../core/services/account.service';
@@ -13,6 +14,7 @@ import { PortfolioService, PortfolioSnapshot, SymbolPerformanceSummary } from '.
 import { PriceService } from '../../core/services/price.service';
 import { SymbolCatalogService } from '../../core/services/symbol-catalog.service';
 import { SymbolComponent } from '../../shared/symbol-chip.component';
+import { AccountHistoryComponent } from './account-history/account-history.component';
 
 @Component({
     standalone: true,
@@ -24,7 +26,9 @@ import { SymbolComponent } from '../../shared/symbol-chip.component';
             MatSelectModule,
             MatButtonModule,
             MatIconModule,
+            MatTabsModule,
             SymbolComponent,
+            AccountHistoryComponent,
         ],
     templateUrl: './analytics.component.html',
     styleUrl: './analytics.component.scss'
