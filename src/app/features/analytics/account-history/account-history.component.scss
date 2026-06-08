@@ -1,0 +1,57 @@
+:host {
+  display: block;
+}
+
+.history-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.history-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chart-wrapper {
+  position: relative;
+  height: 360px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 1rem;
+    opacity: 0.4;
+  }
+}
+
+.table-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.snapshot-table {
+  width: 100%;
+}
+
+.actions-cell {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.no-data-row {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
