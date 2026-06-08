@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import {
   Firestore,
   UpdateData,
@@ -24,6 +24,8 @@ import { stripUndefined } from '../utils/strip-undefined';
 export class AccountService {
   private readonly firestore = inject(Firestore);
   private readonly authService = inject(AuthService);
+
+  readonly selectedAccountId = signal<string | null>(null);
 
   private currentUid(): string {
     return this.authService.requireUserUid();

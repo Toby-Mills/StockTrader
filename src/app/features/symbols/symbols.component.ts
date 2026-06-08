@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AccountService } from '../../core/services/account.service';
 import { PriceQuote } from '../../core/models/price-quote.model';
 import { PriceService } from '../../core/services/price.service';
@@ -38,6 +39,8 @@ export class SymbolsComponent {
   private readonly priceService = inject(PriceService);
   private readonly symbolCatalogService = inject(SymbolCatalogService);
   private readonly dialog = inject(MatDialog);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   private readonly accountsSignal = toSignal(this.accountService.getAccounts(), {
     initialValue: [] as Account[],
@@ -47,7 +50,7 @@ export class SymbolsComponent {
     [...this.accountsSignal()].sort((a, b) => a.name.localeCompare(b.name))
   );
 
-  readonly selectedAccountId = signal('');
+  readonly selectedAccountId = signal(this.route.snapshot.paramMap.get('id') ?? '');
   readonly symbols = signal<TrackedSymbol[]>([]);
   readonly quoteBySymbol = signal<Record<string, PriceQuote>>({});
   readonly selectedAccount = computed(
@@ -58,18 +61,30 @@ export class SymbolsComponent {
   feedbackMessage = '';
 
   constructor() {
+    effect(onCleanup => {
+      const subscription = this.route.paramMap.subscribe(paramMap => {
+        const id = paramMap.get('id');
+        this.selectedAccountId.set(id ?? '');
+        if (id) {
+          this.accountService.selectedAccountId.set(id);
+        }
+      });
+      onCleanup(() => subscription.unsubscribe());
+    }, { allowSignalWrites: true });
+
     effect(() => {
       const accountList = this.accounts();
       const selected = this.selectedAccountId();
-      if (!accountList.length) {
-        this.selectedAccountId.set('');
+      
+      if (accountList.length === 0) {
         return;
       }
 
       if (!selected || !accountList.some(account => account.id === selected)) {
-        this.selectedAccountId.set(accountList[0].id);
+        const firstId = this.accountService.selectedAccountId() ?? accountList[0].id;
+        this.router.navigate(['/accounts', firstId, 'stock-prices']);
       }
-    });
+    }, { allowSignalWrites: true });
 
     effect(onCleanup => {
       const accountId = this.selectedAccountId();
@@ -115,7 +130,7 @@ export class SymbolsComponent {
   }
 
   onAccountChanged(accountId: string): void {
-    this.selectedAccountId.set(accountId);
+    this.router.navigate(['/accounts', accountId, 'stock-prices']);
     this.feedbackMessage = '';
   }
 

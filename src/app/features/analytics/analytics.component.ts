@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Account } from '../../core/models/account.model';
 import { TrackedSymbol } from '../../core/models/tracked-symbol.model';
 import { AccountService } from '../../core/services/account.service';
@@ -38,6 +39,8 @@ export class AnalyticsComponent {
     private readonly portfolioService = inject(PortfolioService);
     private readonly symbolCatalogService = inject(SymbolCatalogService);
     private readonly priceService = inject(PriceService);
+    private readonly route = inject(ActivatedRoute);
+    private readonly router = inject(Router);
 
     private readonly accountsSignal = toSignal(this.accountService.getAccounts(), {
         initialValue: [] as Account[],
@@ -47,7 +50,7 @@ export class AnalyticsComponent {
         [...this.accountsSignal()].sort((a, b) => a.name.localeCompare(b.name))
     );
 
-    readonly selectedAccountId = signal('');
+    readonly selectedAccountId = signal(this.route.snapshot.paramMap.get('id') ?? '');
     readonly selectedSymbol = signal('ALL');
     readonly portfolioSnapshot = signal<PortfolioSnapshot | null>(null);
     readonly trackedSymbols = signal<TrackedSymbol[]>([]);
@@ -96,16 +99,28 @@ export class AnalyticsComponent {
     });
 
     constructor() {
+        effect(onCleanup => {
+            const subscription = this.route.paramMap.subscribe(paramMap => {
+                const id = paramMap.get('id');
+                this.selectedAccountId.set(id ?? '');
+                if (id) {
+                    this.accountService.selectedAccountId.set(id);
+                }
+            });
+            onCleanup(() => subscription.unsubscribe());
+        }, { allowSignalWrites: true });
+
         effect(() => {
             const accountList = this.accounts();
             const selected = this.selectedAccountId();
-            if (!accountList.length) {
-                this.selectedAccountId.set('');
+            
+            if (accountList.length === 0) {
                 return;
             }
 
             if (!selected || !accountList.some(account => account.id === selected)) {
-                this.selectedAccountId.set(accountList[0].id);
+                const firstId = this.accountService.selectedAccountId() ?? accountList[0].id;
+                this.router.navigate(['/accounts', firstId, 'analytics']);
             }
         }, { allowSignalWrites: true });
 
@@ -160,9 +175,9 @@ export class AnalyticsComponent {
     }
 
     onAccountChanged(accountId: string): void {
-        this.selectedAccountId.set(accountId);
         this.selectedSymbol.set('ALL');
         this.feedbackMessage.set('');
+        this.router.navigate(['/accounts', accountId, 'analytics']);
     }
 
     onSymbolChanged(symbol: string): void {

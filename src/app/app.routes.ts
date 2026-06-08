@@ -19,7 +19,7 @@ export const routes: Routes = [
       import('./features/accounts/accounts.component').then(m => m.AccountsComponent),
   },
   {
-    path: 'accounts/:id',
+    path: 'accounts/:id/activity',
     canActivate: [authGuard],
     loadComponent: () =>
       import('./features/activity/activity.component').then(m => m.ActivityComponent),
@@ -43,7 +43,19 @@ export const routes: Routes = [
       import('./features/analytics/analytics.component').then(m => m.AnalyticsComponent),
   },
   {
+    path: 'accounts/:id/analytics',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/analytics/analytics.component').then(m => m.AnalyticsComponent),
+  },
+  {
     path: 'stock-prices',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/symbols/symbols.component').then(m => m.SymbolsComponent),
+  },
+  {
+    path: 'accounts/:id/stock-prices',
     canActivate: [authGuard],
     loadComponent: () =>
       import('./features/symbols/symbols.component').then(m => m.SymbolsComponent),

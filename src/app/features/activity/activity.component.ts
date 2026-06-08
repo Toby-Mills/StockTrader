@@ -169,7 +169,7 @@ export class ActivityComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
-  readonly accountId = signal<string | null>(null);
+  readonly accountId = signal<string | null>(this.route.snapshot.paramMap.get('id'));
   readonly selectedAccountId = computed(() => this.accountId() ?? '');
   readonly accounts = signal<Account[]>([]);
   readonly hasAccounts = computed(() => this.accounts().length > 0);
@@ -546,6 +546,9 @@ export class ActivityComponent {
         const id = paramMap.get('id');
         this.debug('Route param id received', { id, url: this.router.url });
         this.accountId.set(id);
+        if (id) {
+          this.accountService.selectedAccountId.set(id);
+        }
       });
       onCleanup(() => subscription.unsubscribe());
     }, { allowSignalWrites: true });
@@ -562,9 +565,9 @@ export class ActivityComponent {
 
           let id = currentRequestId;
           if (!id && sortedAccounts.length > 0) {
-            id = sortedAccounts[0].id;
-            this.debug('No account id in route, picking first available', { id });
-            this.router.navigate(['/accounts', id]);
+            id = this.accountService.selectedAccountId() ?? sortedAccounts[0].id;
+            this.debug('No account id in route, picking from global state or first available', { id });
+            this.router.navigate(['/accounts', id, 'activity']);
             return;
           }
 
@@ -797,7 +800,7 @@ export class ActivityComponent {
     this.selectedStartDate.set(null);
     this.selectedEndDate.set(null);
     this.symbolFilterText.set('');
-    this.router.navigate(['/accounts', accountId]);
+    this.router.navigate(['/accounts', accountId, 'activity']);
   }
 
   onSymbolFilterInput(value: string): void {
