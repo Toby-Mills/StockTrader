@@ -9,7 +9,8 @@
     "build:prod": "ng build --configuration production",
     "test": "ng test",
     "lint": "ng lint",
-    "deploy:rules": "firebase deploy --only firestore:rules --project stocktrader-c47b0"
+    "deploy:rules": "firebase deploy --only firestore:rules --project stocktrader-c47b0",
+    "build:deploy": "npm run build:prod && xcopy dist\\stock-trader\\browser\\* \"\\\\LilNasX\\docker\\nginx\\stockTrader\" /E /Y"
   },
   "dependencies": {
     "@angular/animations": "^21.2.7",
