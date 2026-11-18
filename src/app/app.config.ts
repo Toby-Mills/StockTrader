@@ -2,6 +2,7 @@ import { ApplicationConfig } from '@angular/core';
 import { provideRouter, withNavigationErrorHandler } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { initializeFirestore, provideFirestore } from '@angular/fire/firestore';
 import { routes } from './app.routes';
@@ -42,7 +43,22 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes, withNavigationErrorHandler(handleNavigationError)),
     provideAnimations(),
-    provideFirebaseApp(() => initializeApp(environment.firebase)),
+    provideFirebaseApp(() => {
+      const app = initializeApp(environment.firebase);
+      // Firebase AI Logic requires an App Check token. Initialize eagerly (AngularFire's
+      // provideAppCheck is lazy and never runs unless AppCheck is injected).
+      if (environment.appCheckSiteKey) {
+        if (!environment.production) {
+          // Logs a debug token to the console; register it in Firebase Console > App Check > Apps > Manage debug tokens.
+          (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+        }
+        initializeAppCheck(app, {
+          provider: new ReCaptchaEnterpriseProvider(environment.appCheckSiteKey),
+          isTokenAutoRefreshEnabled: true,
+        });
+      }
+      return app;
+    }),
     provideAuth(() => getAuth()),
     ...appDateProviders,
     provideFirestore(() =>

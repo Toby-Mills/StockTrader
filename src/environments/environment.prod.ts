@@ -1,5 +1,7 @@
 export const environment = {
   production: true,
+  // reCAPTCHA Enterprise site key for Firebase App Check (required if App Check is enforced for Firebase AI)
+  appCheckSiteKey: '6LeTsiYuAAAAAF8GASDUQ8RNIUr5j17bidEx56ZD',
   firebase: {
     apiKey: 'AIzaSyAnWKwMpBgJCH6qS4WODn4yyzOfDouAZjM',
     authDomain: 'stocktrader-c47b0.firebaseapp.com',
