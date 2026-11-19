@@ -301,3 +301,22 @@ app-account-details {
     }
   }
 }
+
+// Snack bar overlays render into a global CDK container, outside any component's DOM,
+// so this styling has to live at the top level rather than nested under app-account-details.
+.error-snackbar {
+  border-left: 6px solid #ffcdd2;
+
+  .mdc-snackbar__surface {
+    background-color: #b3261e !important;
+  }
+
+  .mdc-snackbar__label {
+    color: #fff !important;
+    font-weight: 600;
+  }
+
+  .mat-mdc-button {
+    color: #fff !important;
+  }
+}

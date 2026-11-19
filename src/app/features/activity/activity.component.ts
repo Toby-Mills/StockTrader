@@ -509,6 +509,9 @@ export class ActivityComponent {
 
   isSaving = false;
   private _feedbackMessage = '';
+  // errorMessage() flips this right before the string it returns is assigned to feedbackMessage,
+  // so the setter below can tell an error toast from a plain status toast.
+  private pendingFeedbackIsError = false;
   inlineEditDraft: InlineTransactionDraft = this.createEmptyInlineTransactionDraft();
   inlineEditError = '';
   inlineDividendEditDraft: InlineDividendDraft = this.createEmptyInlineDividendDraft();
@@ -520,12 +523,16 @@ export class ActivityComponent {
 
   set feedbackMessage(value: string) {
     this._feedbackMessage = value;
+    const isError = this.pendingFeedbackIsError;
+    this.pendingFeedbackIsError = false;
+
     if (!value) {
       return;
     }
 
     this.snackBar.open(value, 'Dismiss', {
-      duration: 4000,
+      panelClass: isError ? 'error-snackbar' : undefined,
+      duration: isError ? undefined : 4000,
       horizontalPosition: 'end',
       verticalPosition: 'top',
     });
@@ -1894,6 +1901,7 @@ export class ActivityComponent {
 
     const isCsv = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
     if (!isCsv) {
+      this.pendingFeedbackIsError = true;
       this.feedbackMessage = 'Please select a CSV file.';
       return;
     }
@@ -1906,6 +1914,7 @@ export class ActivityComponent {
       const rows = this.parseImportCsv(content);
 
       if (rows.length === 0) {
+        this.pendingFeedbackIsError = true;
         this.feedbackMessage = 'No supported transaction/dividend rows found in the CSV.';
         return;
       }
@@ -2910,6 +2919,7 @@ export class ActivityComponent {
   }
 
   private errorMessage(error: unknown, prefix: string): string {
+    this.pendingFeedbackIsError = true;
     const message = error instanceof Error ? error.message : String(error);
     return `${prefix}: ${message}`;
   }
